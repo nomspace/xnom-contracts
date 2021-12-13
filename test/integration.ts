@@ -9,10 +9,20 @@ import { MockERC20 } from "../typechain/MockERC20";
 import { MockERC20__factory } from "../typechain/factories/MockERC20__factory";
 import { MockOperatorOwnedERC721 } from "../typechain/MockOperatorOwnedERC721";
 import { MockOperatorOwnedERC721__factory } from "../typechain/factories/MockOperatorOwnedERC721__factory";
+import { parseUnits } from "ethers/lib/utils";
+import { Commitment } from "../src/types";
 
 const increaseTime = async (seconds: number) => {
   await ethers.provider.send("evm_increaseTime", [seconds]);
   await ethers.provider.send("evm_mine", []);
+};
+
+const takeSnapshot = async () => {
+  return await ethers.provider.send("evm_snapshot", []);
+};
+
+const revertSnapshot = async (snapshotId: number) => {
+  await ethers.provider.send("evm_revert", [snapshotId]);
 };
 
 describe("Integration test", function () {
@@ -25,9 +35,10 @@ describe("Integration test", function () {
   let token: MockERC20;
   let nft: MockOperatorOwnedERC721;
   let operator: Operator;
+  let snapshot: any;
 
   const DAY_IN_SECONDS = 60 * 60 * 24;
-  const AMOUNT = 10;
+  const AMOUNT = parseUnits("1", "ether");
 
   before(async function () {
     const network = await ethers.provider.getNetwork();
@@ -84,8 +95,24 @@ describe("Integration test", function () {
     operator = new Operator(signers, deployments, {
       [chainId]: {
         numConfirmations: 1,
+        whitelist: {
+          [nft.address]: {
+            [nft.interface.getSighash("mint")]: (commitment: Commitment) => {
+              const [, , rentTime] = nft.interface.decodeFunctionData(
+                "mint",
+                commitment.data
+              );
+              return (
+                commitment.amount.gte(parseUnits("1", "ether")) && // Minimum amount is 1 ether
+                commitment.currency === token.address &&
+                commitment.amount.gte(rentTime)
+              );
+            },
+          },
+        },
       },
     });
+    snapshot = await takeSnapshot();
   });
 
   describe("empty run", () => {
@@ -97,7 +124,11 @@ describe("Integration test", function () {
 
   const reserveNFT = async (tokenId: number, nftRecipient?: string) => {
     const data = (
-      await nft.populateTransaction.mint(userAccount.address, tokenId)
+      await nft.populateTransaction.mint(
+        userAccount.address,
+        tokenId,
+        parseUnits("1", "ether") // Reserve for parseUnits("1", "ether") seconds
+      )
     ).data;
     if (!data) {
       throw new Error("Data is undefined");
@@ -114,23 +145,12 @@ describe("Integration test", function () {
     );
   };
 
-  const voidCommitment = async (commitmentIndex: number) => {
-    await userReservePortal.void(commitmentIndex);
-  };
-
   describe("normal run", () => {
     it("should work", async function () {
       // Queue 3 commitments
       await reserveNFT(0);
       await reserveNFT(1);
-      await reserveNFT(2);
       let pendingCommitments = await operator.fetchPendingCommitments();
-      expect(pendingCommitments.length).to.be.equal(3);
-
-      // Void a commitment
-      await increaseTime(DAY_IN_SECONDS);
-      await voidCommitment(2);
-      pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(2);
 
       // Check that the commitments are commited
@@ -148,21 +168,131 @@ describe("Integration test", function () {
 
   describe("races", () => {
     it("should be won by the person who committed first", async function () {
-      // Queue a race for the 3rd token
-      await reserveNFT(3, userAccount.address);
-      await reserveNFT(3, ownerAccount.address);
+      // Queue a race for the 0th token
+      await reserveNFT(0, userAccount.address);
+      await reserveNFT(0, ownerAccount.address);
       let pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(2);
 
       // Check that the commitments are commited
       await operator.finalizePendingCommitments(pendingCommitments);
-      expect((await userReservePortal.commitments(3)).committed).to.be.true;
-      expect((await userReservePortal.commitments(4)).canceled).to.be.true;
+      expect((await userReservePortal.commitments(0)).committed).to.be.true;
+      expect((await userReservePortal.commitments(1)).committed).to.be.false;
+      pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(1);
+
+      // Un-commited pending commitment expires after a day
+      await increaseTime(DAY_IN_SECONDS);
       pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(0);
 
       // NFTs should be properly minted
-      expect(await nft.ownerOf(3)).to.be.equal(userAccount.address);
+      expect(await nft.ownerOf(0)).to.be.equal(userAccount.address);
     });
+  });
+
+  describe("whitelist", () => {
+    it("should ignore any commitments from non-whitelisted targets", async function () {
+      const data = (
+        await nft.populateTransaction.mint(
+          userAccount.address,
+          0,
+          parseUnits("1", "ether")
+        )
+      ).data;
+      if (!data) {
+        throw new Error("Data is undefined");
+      }
+      await token
+        .connect(userAccount)
+        .approve(userReservePortal.address, AMOUNT);
+      await userReservePortal.escrow(
+        token.address,
+        AMOUNT,
+        chainId,
+        userAccount.address, // Target is the user, which is not whitelisted
+        0,
+        data,
+        userAccount.address
+      );
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+    });
+
+    it("should ignore any commitments from non-whitelisted selectors", async function () {
+      await token
+        .connect(userAccount)
+        .approve(userReservePortal.address, AMOUNT);
+      await userReservePortal.escrow(
+        token.address,
+        AMOUNT,
+        chainId,
+        nft.address,
+        0,
+        "0x000000", // 0 address selector
+        userAccount.address
+      );
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+    });
+
+    it("should ignore any commitments with amounts less than 1 ether", async function () {
+      const data = (
+        await nft.populateTransaction.mint(
+          userAccount.address,
+          0,
+          parseUnits("1", "ether")
+        )
+      ).data;
+      if (!data) {
+        throw new Error("Data is undefined");
+      }
+      await token
+        .connect(userAccount)
+        .approve(userReservePortal.address, AMOUNT);
+      await userReservePortal.escrow(
+        token.address,
+        parseUnits("1", "ether").sub(1),
+        chainId,
+        nft.address,
+        0,
+        data,
+        userAccount.address
+      );
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+    });
+
+    it("should ignore any commitments with amounts < rent time", async function () {
+      const data = (
+        await nft.populateTransaction.mint(
+          userAccount.address,
+          0,
+          parseUnits("1", "ether").add(1)
+        )
+      ).data; // 1 ether + 1 wei rentTime
+      if (!data) {
+        throw new Error("Data is undefined");
+      }
+      await token
+        .connect(userAccount)
+        .approve(userReservePortal.address, AMOUNT);
+      await userReservePortal.escrow(
+        token.address,
+        parseUnits("1", "ether"),
+        chainId,
+        nft.address,
+        0,
+        data,
+        userAccount.address
+      );
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+    });
+  });
+
+  afterEach(async () => {
+    await revertSnapshot(snapshot);
+    snapshot = await takeSnapshot();
   });
 });

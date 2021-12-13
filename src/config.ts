@@ -1,3 +1,6 @@
+import { BigNumber } from "ethers";
+import { Commitment } from "./types";
+
 export enum ChainId {
   // Mainnets
   CELO = "42220",
@@ -8,16 +11,18 @@ export enum ChainId {
   FUJI = "43113",
 }
 
+export type CommitmentCheck = (commitment: Commitment) => boolean;
+// Selectors mapping to commitment checks
+export type Selectors = Record<string, CommitmentCheck>;
+// Targets mapping to accepted selectors
+export type Targets = Record<string, Selectors>;
+
 export type ChainConfig = {
   numConfirmations: number;
+  // Whitelisted addresses that map to whitelisted selectors
+  whitelist: Targets;
 };
 
 export type Config = Record<string, ChainConfig>;
 
-export const defaultConfig: Config = {
-  [ChainId.CELO]: { numConfirmations: 5 },
-  [ChainId.AVALANCHE]: { numConfirmations: 5 },
-
-  [ChainId.ALFAJORES]: { numConfirmations: 5 },
-  [ChainId.FUJI]: { numConfirmations: 5 },
-};
+export const defaultConfig: Config = {};

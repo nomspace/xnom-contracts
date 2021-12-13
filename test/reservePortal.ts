@@ -72,7 +72,6 @@ describe("ReservePortal", function () {
       expect(commitment.data).to.be.equal("0x00");
       expect(commitment.voided).to.be.false;
       expect(commitment.committed).to.be.false;
-      expect(commitment.canceled).to.be.false;
     });
   });
 

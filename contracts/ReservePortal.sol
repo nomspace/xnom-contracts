@@ -30,13 +30,11 @@ contract ReservePortal is Ownable {
     // State metadata
     bool voided;
     bool committed;
-    bool canceled;
   }
 
-  event Escrowed(uint256 indexed index);
+  event Escrowed(uint256 indexed index, uint256 timestamp);
   event Voided(uint256 indexed index);
   event Committed(uint256 indexed index);
-  event Canceled(uint256 indexed index);
   event OperatorChanged(
     address indexed previousOperator,
     address indexed nextOperator
@@ -64,7 +62,6 @@ contract ReservePortal is Ownable {
     Commitment storage commitment = commitments[_commitmentIndex];
     require(!commitment.voided, "Commitment is already voided");
     require(!commitment.committed, "Commitment is already committed");
-    require(!commitment.canceled, "Commitment is already canceled");
     _;
   }
 
@@ -80,21 +77,21 @@ contract ReservePortal is Ownable {
     address _onBehalfOf
   ) public {
     _currency.safeTransferFrom(msg.sender, address(this), _amount);
+    uint256 currentTime = block.timestamp;
     commitments[nextCommitmentIndex] = Commitment(
       nextCommitmentIndex,
       _onBehalfOf,
       _currency,
       _amount,
-      block.timestamp,
+      currentTime,
       _chainId,
       _target,
       _value,
       _data,
       false,
-      false,
       false
     );
-    emit Escrowed(nextCommitmentIndex++);
+    emit Escrowed(nextCommitmentIndex++, currentTime);
   }
 
   function void(uint256 _commitmentIndex)
@@ -123,15 +120,6 @@ contract ReservePortal is Ownable {
     commitment.committed = true;
     withdrawableAmounts[commitment.currency] += commitment.amount;
     emit Committed(_commitmentIndex);
-  }
-
-  function cancel(uint256 _commitmentIndex)
-    external
-    onlyOperator
-    pendingCommitment(_commitmentIndex)
-  {
-    commitments[_commitmentIndex].canceled = true;
-    emit Canceled(_commitmentIndex);
   }
 
   // == Owner only write functions ==

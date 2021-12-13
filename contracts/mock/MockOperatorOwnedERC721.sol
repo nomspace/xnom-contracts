@@ -9,7 +9,11 @@ contract MockOperatorOwnedERC721 is OperatorOwnedERC721 {
     OperatorOwnedERC721(_underlying, _operator)
   {}
 
-  function mint(address _to, uint256 _tokenId) public {
+  function mint(
+    address _to,
+    uint256 _tokenId,
+    uint256 // rentTime
+  ) public {
     MockERC721(address(underlying)).mint(address(this), _tokenId);
     this.migrateIn(_tokenId, _to);
   }
