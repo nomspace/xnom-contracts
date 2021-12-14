@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "../OperatorOwned.sol";
 import "../interfaces/INom.sol";
 
-contract OperatorOwnedNom is OperatorOwned, INom {
+contract OperatorOwnedNomV1 is OperatorOwned, INom {
   INom public immutable nom;
 
   mapping(bytes32 => address) private _owners;
