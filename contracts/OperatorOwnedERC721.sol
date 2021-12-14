@@ -7,25 +7,16 @@ import "@openzeppelin/contracts/interfaces/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-contract OperatorOwnedERC721 is Ownable, ERC721, ERC721Holder {
-  address public operator;
+import "./OperatorOwned.sol";
+
+contract OperatorOwnedERC721 is OperatorOwned, ERC721, ERC721Holder {
   IERC721 public immutable underlying;
 
-  event OperatorChanged(
-    address indexed previousOperator,
-    address indexed nextOperator
-  );
-
   constructor(IERC721Metadata _underlying, address _operator)
+    OperatorOwned(_operator)
     ERC721(_underlying.symbol(), _underlying.name())
   {
     underlying = _underlying;
-    operator = _operator;
-  }
-
-  modifier onlyOperator() {
-    require(msg.sender == operator, "Only operator can call this function");
-    _;
   }
 
   modifier onlyOperatorOrTokenOwner(uint256 tokenId) {
@@ -69,12 +60,5 @@ contract OperatorOwnedERC721 is Ownable, ERC721, ERC721Holder {
     require(ownerOf(_tokenId) == msg.sender, "Caller is not token owner");
     underlying.safeTransferFrom(address(this), _to, _tokenId);
     _burn(_tokenId);
-  }
-
-  // == Owner only write functions ==
-
-  function setOperator(address _newOperator) external onlyOwner {
-    emit OperatorChanged(operator, _newOperator);
-    operator = _newOperator;
   }
 }
