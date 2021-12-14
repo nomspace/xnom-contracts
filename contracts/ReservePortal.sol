@@ -75,7 +75,7 @@ contract ReservePortal is Ownable {
     uint256 _value,
     bytes memory _data,
     address _onBehalfOf
-  ) public {
+  ) external {
     _currency.safeTransferFrom(msg.sender, address(this), _amount);
     uint256 currentTime = block.timestamp;
     commitments[nextCommitmentIndex] = Commitment(
@@ -129,7 +129,7 @@ contract ReservePortal is Ownable {
     operator = _newOperator;
   }
 
-  function withdraw(IERC20 _token, address _to) public onlyOwner {
+  function withdraw(IERC20 _token, address _to) external onlyOwner {
     uint256 amount = withdrawableAmounts[_token];
     withdraw(_token, amount, _to);
   }

@@ -13,7 +13,7 @@ contract MockOperatorOwnedERC721 is OperatorOwnedERC721 {
     address _to,
     uint256 _tokenId,
     uint256 // rentTime
-  ) public {
+  ) external {
     MockERC721(address(underlying)).mint(address(this), _tokenId);
     this.migrateIn(_tokenId, _to);
   }

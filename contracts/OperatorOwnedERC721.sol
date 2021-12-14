@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 contract OperatorOwnedERC721 is Ownable, ERC721, ERC721Holder {
-  mapping(uint256 => bool) operatorRevoked;
-  mapping(uint256 => address) _owners;
   address public operator;
   IERC721 public immutable underlying;
 
@@ -31,11 +29,10 @@ contract OperatorOwnedERC721 is Ownable, ERC721, ERC721Holder {
   }
 
   modifier onlyOperatorOrTokenOwner(uint256 tokenId) {
-    if (msg.sender == operator) {
-      require(!operatorRevoked[tokenId], "Operator not allowed");
-    } else {
-      require(msg.sender == ownerOf(tokenId), "Non-token owner not allowed");
-    }
+    require(
+      msg.sender == operator || msg.sender == ownerOf(tokenId),
+      "Only operator or token owner is allowed"
+    );
     _;
   }
 
