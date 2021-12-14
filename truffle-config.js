@@ -12,6 +12,16 @@ module.exports = {
       gas: 0xfffffffffff, // <-- Use this high gas value
       gasPrice: 0x01, // <-- Use this low gas price
     },
+    celo: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: "https://forno.celo.org",
+        }),
+      network_id: 42220,
+      gas: 6000000,
+      gasPrice: toWei("0.1", "gwei"),
+    },
     alfajores: {
       provider: () =>
         new HDWalletProvider({
@@ -22,15 +32,25 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei("0.5", "gwei"),
     },
-    celo: {
+    avalanche: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
-          providerOrUrl: "https://forno.celo.org",
+          providerOrUrl: `https://api.avax.network/ext/bc/C/rpc`,
         }),
-      network_id: 42220,
+      network_id: 1,
       gas: 6000000,
-      gasPrice: toWei("0.1", "gwei"),
+      gasPrice: toWei('30', 'gwei'),
+    },
+    fuji: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://api.avax-test.network/ext/bc/C/rpc`,
+        }),
+      network_id: 1,
+      gas: 6000000,
+      gasPrice: toWei('30', 'gwei'),
     },
   },
 

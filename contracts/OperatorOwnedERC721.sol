@@ -54,11 +54,10 @@ contract OperatorOwnedERC721 is Ownable, ERC721, ERC721Holder {
     returns (address owner)
   {
     address underlyingTokenOwner = underlying.ownerOf(tokenId);
-    require(
-      underlyingTokenOwner == address(this),
-      "token is not under this contract's management"
-    );
-    return super.ownerOf(tokenId);
+    if (underlyingTokenOwner == address(this)) {
+      return super.ownerOf(tokenId);
+    }
+    return underlyingTokenOwner;
   }
 
   function migrateIn(uint256 _tokenId, address _onBehalfOf) external {
