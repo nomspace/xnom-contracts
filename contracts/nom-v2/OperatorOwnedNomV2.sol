@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "../OperatorOwned.sol";
 import "./NomRegistrarController.sol";
-import "hardhat/console.sol";
 
 contract OperatorOwnedNomV2 is OperatorOwned {
   NomRegistrarController public immutable controller;
@@ -24,7 +23,6 @@ contract OperatorOwnedNomV2 is OperatorOwned {
 
   modifier onlyOperatorOrNameOwner(string memory name) {
     uint256 tokenId = uint256(keccak256(bytes(name)));
-    console.log(tokenId);
     require(msg.sender == operator, "Only operator or token owner is allowed");
     _;
   }
