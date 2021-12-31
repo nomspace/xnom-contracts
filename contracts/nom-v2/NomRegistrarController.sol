@@ -70,7 +70,7 @@ contract NomRegistrarController is Ownable, FeeBase {
     return name.strlen() >= 1;
   }
 
-  function available(string memory name) public view returns (bool) {
+  function available(string memory name) external view returns (bool) {
     bytes32 label = keccak256(bytes(name));
     return valid(name) && base.available(uint256(label));
   }
@@ -135,7 +135,7 @@ contract NomRegistrarController is Ownable, FeeBase {
   }
 
   // @notice should only be used to rescue tokens
-  function withdraw() public onlyOwner {
+  function withdraw() external onlyOwner {
     payable(msg.sender).transfer(address(this).balance);
   }
 
