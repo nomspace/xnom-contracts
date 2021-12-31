@@ -55,8 +55,7 @@ describe("ReservePortal", function () {
         chainId,
         target.address,
         0,
-        "0x00",
-        owner.address
+        "0x00"
       );
       const balanceAfter = await token.balanceOf(owner.address);
       expect(balanceBefore.sub(balanceAfter)).to.be.equal(AMOUNT);

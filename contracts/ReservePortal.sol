@@ -73,14 +73,13 @@ contract ReservePortal is Ownable {
     uint256 _chainId,
     address _target,
     uint256 _value,
-    bytes memory _data,
-    address _onBehalfOf
+    bytes memory _data
   ) external {
     _currency.safeTransferFrom(msg.sender, address(this), _amount);
     uint256 currentTime = block.timestamp;
     commitments[nextCommitmentIndex] = Commitment(
       nextCommitmentIndex,
-      _onBehalfOf,
+      msg.sender,
       _currency,
       _amount,
       currentTime,

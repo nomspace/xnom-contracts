@@ -11,7 +11,7 @@ export enum ChainId {
   FUJI = "43113",
 }
 
-export type CommitmentCheck = (commitment: Commitment) => boolean;
+export type CommitmentCheck = (commitment: Commitment) => Promise<boolean>;
 // Selectors mapping to commitment checks
 export type Selectors = Record<string, CommitmentCheck>;
 // Targets mapping to accepted selectors

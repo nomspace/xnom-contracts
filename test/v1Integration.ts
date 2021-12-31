@@ -25,7 +25,7 @@ const revertSnapshot = async (snapshotId: number) => {
   await ethers.provider.send("evm_revert", [snapshotId]);
 };
 
-describe("Integration test", function () {
+describe("Nom v1 Integration test", function () {
   let chainId: number;
   let ownerAccount: SignerWithAddress;
   let operatorAccount: SignerWithAddress;
@@ -97,7 +97,9 @@ describe("Integration test", function () {
         numConfirmations: 1,
         whitelist: {
           [nft.address]: {
-            [nft.interface.getSighash("mint")]: (commitment: Commitment) => {
+            [nft.interface.getSighash("mint")]: async (
+              commitment: Commitment
+            ) => {
               const [, , rentTime] = nft.interface.decodeFunctionData(
                 "mint",
                 commitment.data
@@ -140,8 +142,7 @@ describe("Integration test", function () {
       chainId,
       nft.address,
       0,
-      data,
-      nftRecipient || userAccount.address
+      data
     );
   };
 
@@ -181,11 +182,6 @@ describe("Integration test", function () {
       pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(1);
 
-      // Un-commited pending commitment expires after a day
-      await increaseTime(DAY_IN_SECONDS);
-      pendingCommitments = await operator.fetchPendingCommitments();
-      expect(pendingCommitments.length).to.be.equal(0);
-
       // NFTs should be properly minted
       expect(await nft.ownerOf(0)).to.be.equal(userAccount.address);
     });
@@ -212,11 +208,10 @@ describe("Integration test", function () {
         chainId,
         userAccount.address, // Target is the user, which is not whitelisted
         0,
-        data,
-        userAccount.address
+        data
       );
       let pendingCommitments = await operator.fetchPendingCommitments();
-      expect(pendingCommitments.length).to.be.equal(0);
+      expect(pendingCommitments.length).to.be.equal(1);
     });
 
     it("should ignore any commitments from non-whitelisted selectors", async function () {
@@ -229,11 +224,10 @@ describe("Integration test", function () {
         chainId,
         nft.address,
         0,
-        "0x000000", // 0 address selector
-        userAccount.address
+        "0x000000" // 0 address selector
       );
       let pendingCommitments = await operator.fetchPendingCommitments();
-      expect(pendingCommitments.length).to.be.equal(0);
+      expect(pendingCommitments.length).to.be.equal(1);
     });
 
     it("should ignore any commitments with amounts less than 1 ether", async function () {
@@ -256,11 +250,10 @@ describe("Integration test", function () {
         chainId,
         nft.address,
         0,
-        data,
-        userAccount.address
+        data
       );
       let pendingCommitments = await operator.fetchPendingCommitments();
-      expect(pendingCommitments.length).to.be.equal(0);
+      expect(pendingCommitments.length).to.be.equal(1);
     });
 
     it("should ignore any commitments with amounts < rent time", async function () {
@@ -283,11 +276,10 @@ describe("Integration test", function () {
         chainId,
         nft.address,
         0,
-        data,
-        userAccount.address
+        data
       );
       let pendingCommitments = await operator.fetchPendingCommitments();
-      expect(pendingCommitments.length).to.be.equal(0);
+      expect(pendingCommitments.length).to.be.equal(1);
     });
   });
 

@@ -33,46 +33,47 @@ export class Operator {
 
     const allPendingCommitments: Commitment[] = [];
     for (const [chainId, reservePortal] of Object.entries(this.deployments)) {
-      const now = (await this.signers[chainId].provider!.getBlock("latest"))
-        .timestamp;
+      const now = Math.floor(Date.now() / 1000);
+      const eventOptions = [0, "latest"];
       const [
         allCommitments,
         commitedCommitments,
         voidedCommitments,
         voidDelay,
       ] = await Promise.all([
-        reservePortal.queryFilter(reservePortal.filters.Escrowed(null)),
+        reservePortal.queryFilter(
+          reservePortal.filters.Escrowed(null, null),
+          ...eventOptions
+        ),
         reservePortal
-          .queryFilter(reservePortal.filters.Committed(null))
+          .queryFilter(reservePortal.filters.Committed(null), ...eventOptions)
           .then(eventsToSet),
         reservePortal
-          .queryFilter(reservePortal.filters.Voided(null))
+          .queryFilter(reservePortal.filters.Voided(null), ...eventOptions)
           .then(eventsToSet),
         reservePortal.voidDelay(),
       ]);
-      const pendingCommitments = (
-        await Promise.all(
-          allCommitments
-            .filter((event) => {
-              const { index, timestamp } = event.args;
-              return (
-                !commitedCommitments[index.toString()] &&
-                !voidedCommitments[index.toString()] &&
-                timestamp.add(voidDelay).gt(now)
-              );
-            })
-            .map((event) => {
-              // TODO: Multicall
-              const { index } = event.args;
-              return reservePortal
-                .commitments(index)
-                .then((pendingCommitment) => ({
-                  ...pendingCommitment,
-                  originChainId: chainId,
-                }));
-            })
-        )
-      ).filter((c) => this.isWhitelisted(c));
+      const pendingCommitments = await Promise.all(
+        allCommitments
+          .filter((event) => {
+            const { index, timestamp } = event.args;
+            return (
+              !commitedCommitments[index.toString()] &&
+              !voidedCommitments[index.toString()] &&
+              timestamp.add(voidDelay).gt(now)
+            );
+          })
+          .map((event) => {
+            // TODO: Multicall
+            const { index } = event.args;
+            return reservePortal
+              .commitments(index)
+              .then((pendingCommitment) => ({
+                ...pendingCommitment,
+                originChainId: chainId,
+              }));
+          })
+      );
       allPendingCommitments.push(...pendingCommitments);
     }
 
@@ -87,9 +88,9 @@ export class Operator {
       a.timestamp.sub(b.timestamp).toNumber()
     );
     for (const commitment of sorted) {
-      if (!this.isWhitelisted(commitment)) {
+      if (!(await this.isWhitelisted(commitment))) {
         console.warn(
-          `Commitment ${commitment.index} from chainId ${commitment.originChainId}`
+          `Commitment ${commitment.index} from chainId ${commitment.originChainId} did not pass check`
         );
         continue;
       }
@@ -97,30 +98,34 @@ export class Operator {
       const originConfig = this.config[commitment.originChainId];
       const destConfig = this.config[commitment.chainId.toString()];
       try {
-        const signer = this.signers[commitment.originChainId];
-        const gasPrice = await signer.getGasPrice();
+        const destSigner = this.signers[commitment.chainId.toString()];
         const params = {
           to: commitment.target,
           value: commitment.value,
           data: commitment.data,
-          gasPrice,
         };
-        const gasLimit = await signer.estimateGas(params);
-        const tx = await signer.sendTransaction({ ...params, gasLimit });
+        const gasLimit = await destSigner.estimateGas(params);
+        const tx = await destSigner.sendTransaction({ ...params, gasLimit });
         await tx.wait(destConfig?.numConfirmations);
+        console.info(
+          `Fulfilled ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${tx.hash}`
+        );
         const commitTx = await reservePortal.commit(commitment.index);
         await commitTx.wait(originConfig?.numConfirmations);
         console.info(
           `Commited ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${commitTx.hash}`
         );
       } catch (e: any) {
-        console.warn(e.message);
+        console.error(e);
       }
     }
   }
 
-  isWhitelisted(commitment: Commitment) {
+  async isWhitelisted(commitment: Commitment) {
     const destConfig = this.config[commitment.chainId.toString()];
+    if (!destConfig) {
+      return false;
+    }
     const targetConfig = destConfig.whitelist[commitment.target];
     if (!targetConfig) {
       return false;
@@ -129,6 +134,6 @@ export class Operator {
     if (!validCommitmentCheck) {
       return false;
     }
-    return validCommitmentCheck(commitment);
+    return await validCommitmentCheck(commitment);
   }
 }

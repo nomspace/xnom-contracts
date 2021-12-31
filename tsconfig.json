@@ -7,6 +7,9 @@
     "outDir": "dist",
     "resolveJsonModule": true
   },
+  "ts-node": {
+    "files": true
+  },
   "include": ["./scripts", "./test", "./typechain-types"],
-  "files": ["./hardhat.config.ts"]
+  "files": ["./hardhat.config.ts", "./index.d.ts"]
 }
