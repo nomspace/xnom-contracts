@@ -10,6 +10,8 @@ const { PRIVATE_KEY } = process.env;
 if (!PRIVATE_KEY) {
   console.warn("PRIVATE_KEY not specified");
 }
+const fallbackPrivateKey =
+  "40ea2e72b6ea949a54974973083215fec2d6f2e2963f1999526899f1688406c5";
 
 const providers = {
   [44787]: new CeloProvider("https://alfajores-forno.celo-testnet.org"),
@@ -17,8 +19,8 @@ const providers = {
 };
 
 const signers = {
-  [44787]: PRIVATE_KEY && new CeloWallet(PRIVATE_KEY, providers[44787]),
-  [43113]: PRIVATE_KEY && new Wallet(PRIVATE_KEY, providers[43113]),
+  [44787]: new CeloWallet(PRIVATE_KEY || fallbackPrivateKey, providers[44787]),
+  [43113]: new Wallet(PRIVATE_KEY || fallbackPrivateKey, providers[43113]),
 };
 
 const deployments = {

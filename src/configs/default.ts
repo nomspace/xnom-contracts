@@ -34,15 +34,15 @@ const NUM_CONFIRMATIONS: Record<string, number> = {
 };
 
 const OPERATER_OWNED_NOMS: Record<string, string> = {
-  [44787]: "0x228624240Eac97c0df2060cd0a93372329D6246d",
+  [44787]: "0x7cD4E8f88488FB82A80e6F86373384cf9b080dD5",
 };
 
 const NOM_REGISTRAR_CONTROLLERS: Record<string, string> = {
-  [44787]: "0x0273373C357eF535C89b86ac7B98080DB885814c",
+  [44787]: "0x668551cDE8842F58c473744e5D0726a1fD596c24",
 };
 
 const BASE_REGISTRAR_CONTROLLERS: Record<string, string> = {
-  [44787]: "0xbf56d83A5D7C878D1a8264F278A1252D08F5A4d2",
+  [44787]: "0xD1Ea80BaF9f35Bd56F26F3Ad75D6b65307a133ec",
 };
 
 const ACCEPTED_CURRENCIES: Record<
@@ -153,11 +153,17 @@ export const buildConfig = (
               );
             // Disallow reserve abuse
             if (owner === operatorOwnedNomV2.address) {
+              console.warn(
+                `Commitment ${commitment.index} is using the operator to register`
+              );
               return false;
             }
             const acceptedCurrency =
               acceptedCurrencies[commitment.originChainId];
             if (acceptedCurrency.address !== commitment.currency) {
+              console.warn(
+                `Commitment ${commitment.index} uses an incorrect currency to register`
+              );
               return false;
             }
             const cost = (
