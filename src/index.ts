@@ -116,7 +116,7 @@ export class Operator {
           `Commited ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${commitTx.hash}`
         );
       } catch (e: any) {
-        console.error(e);
+        console.error(e.message);
       }
     }
   }

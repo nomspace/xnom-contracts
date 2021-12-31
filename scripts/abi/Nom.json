@@ -1,0 +1,226 @@
+[
+  {
+    "type": "constructor",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "_feeModule",
+        "internalType": "contract IFeeModule"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "FeeModuleChanged",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "previousFeeModule",
+        "internalType": "address",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "newFeeModule",
+        "internalType": "address",
+        "indexed": true
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "NameOwnerChanged",
+    "inputs": [
+      {
+        "type": "bytes32",
+        "name": "name",
+        "internalType": "bytes32",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "previousOwner",
+        "internalType": "address",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "newOwner",
+        "internalType": "address",
+        "indexed": true
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "NameResolutionChanged",
+    "inputs": [
+      {
+        "type": "bytes32",
+        "name": "name",
+        "internalType": "bytes32",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "previousResolution",
+        "internalType": "address",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "newResolution",
+        "internalType": "address",
+        "indexed": true
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "previousOwner",
+        "internalType": "address",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "newOwner",
+        "internalType": "address",
+        "indexed": true
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "changeNameOwner",
+    "inputs": [
+      { "type": "bytes32", "name": "name", "internalType": "bytes32" },
+      { "type": "address", "name": "newOwner", "internalType": "address" }
+    ]
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "changeResolution",
+    "inputs": [
+      { "type": "bytes32", "name": "name", "internalType": "bytes32" },
+      { "type": "address", "name": "newResolution", "internalType": "address" }
+    ]
+  },
+  {
+    "type": "function",
+    "stateMutability": "view",
+    "outputs": [{ "type": "uint256", "name": "", "internalType": "uint256" }],
+    "name": "expirations",
+    "inputs": [{ "type": "bytes32", "name": "", "internalType": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "extend",
+    "inputs": [
+      { "type": "bytes32", "name": "name", "internalType": "bytes32" },
+      {
+        "type": "uint256",
+        "name": "durationToExtend",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "stateMutability": "view",
+    "outputs": [
+      { "type": "address", "name": "", "internalType": "contract IFeeModule" }
+    ],
+    "name": "feeModule",
+    "inputs": []
+  },
+  {
+    "type": "function",
+    "stateMutability": "view",
+    "outputs": [{ "type": "bool", "name": "expired", "internalType": "bool" }],
+    "name": "isExpired",
+    "inputs": [{ "type": "bytes32", "name": "name", "internalType": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "stateMutability": "view",
+    "outputs": [
+      { "type": "address", "name": "owner", "internalType": "address" }
+    ],
+    "name": "nameOwner",
+    "inputs": [{ "type": "bytes32", "name": "name", "internalType": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "stateMutability": "view",
+    "outputs": [{ "type": "address", "name": "", "internalType": "address" }],
+    "name": "owner",
+    "inputs": []
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "renounceOwnership",
+    "inputs": []
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "reserve",
+    "inputs": [
+      { "type": "bytes32", "name": "name", "internalType": "bytes32" },
+      {
+        "type": "uint256",
+        "name": "durationToReserve",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "stateMutability": "view",
+    "outputs": [
+      { "type": "address", "name": "resolution", "internalType": "address" }
+    ],
+    "name": "resolve",
+    "inputs": [{ "type": "bytes32", "name": "name", "internalType": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "setFeeModule",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "newFeeModule",
+        "internalType": "contract IFeeModule"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "outputs": [],
+    "name": "transferOwnership",
+    "inputs": [
+      { "type": "address", "name": "newOwner", "internalType": "address" }
+    ]
+  }
+]

@@ -1,10 +1,10 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "ethers";
-import { Operator } from "./src/index";
-import { ReservePortal__factory } from "./typechain/factories/ReservePortal__factory";
+import { Operator } from "../src/index";
+import { ReservePortal__factory } from "../typechain/factories/ReservePortal__factory";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
-import { buildConfig } from "./src/configs/default";
+import { buildConfig } from "../src/configs/default";
 
 const { PRIVATE_KEY } = process.env;
 if (!PRIVATE_KEY) {

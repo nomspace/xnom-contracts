@@ -34,13 +34,25 @@ contract OperatorOwnedNomV2 is OperatorOwned {
     controller.renew(name, duration);
   }
 
+  function batchRegister(
+    string[] memory names,
+    address[] memory owners,
+    uint256[] memory durations,
+    address[] memory resolvers,
+    address[] memory addrs
+  ) external onlyOperator {
+    for (uint256 i = 0; i < names.length; i++) {
+      register(names[i], owners[i], durations[i], resolvers[i], addrs[i]);
+    }
+  }
+
   function register(
     string memory name,
     address owner,
     uint256 duration,
     address resolver,
     address addr
-  ) external {
+  ) public onlyOperator {
     // Operator has subnode ownership, user has token ownership
     controller.registerWithConfig(
       name,
