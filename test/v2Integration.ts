@@ -21,6 +21,7 @@ import { MockERC20__factory } from "../typechain/factories/MockERC20__factory";
 import { parseUnits } from "ethers/lib/utils";
 import { buildConfig } from "../src/configs/default";
 import namehash from "eth-ens-namehash";
+import ENS from "@ensdomains/ensjs";
 import { utils } from "ethers";
 
 const labelhash = (label: string) => utils.keccak256(utils.toUtf8Bytes(label));
@@ -55,8 +56,9 @@ describe("Nom v2 Integration test", function () {
   let baseRegistrarImplementation: BaseRegistrarImplementation;
   let nomRegistrarController: NomRegistrarController;
   let operatorOwnedNomV2: OperatorOwnedNomV2;
+  let reverseRegistrar: ReverseRegistrar;
   let operator: Operator;
-  let snapshot: any;
+  let ensjs: any;
 
   before(async function () {
     const network = await ethers.provider.getNetwork();
@@ -126,6 +128,19 @@ describe("Nom v2 Integration test", function () {
       .deploy(nomRegistrarController.address);
     await operatorOwnedNomV2.deployed();
     await nomRegistrarController.addToWhitelist(operatorOwnedNomV2.address);
+    const reverseNode = namehash.hash("reverse");
+    const reverseLabel = labelhash("reverse");
+    reverseRegistrar = await new ReverseRegistrar__factory()
+      .connect(ownerAccount)
+      .deploy(ens.address, resolver.address);
+    await reverseRegistrar.deployed();
+    await reverseRegistrar.setController(operatorOwnedNomV2.address, true);
+    await ens.setSubnodeOwner(ZERO_HASH, reverseLabel, ownerAccount.address);
+    await ens.setSubnodeOwner(
+      reverseNode,
+      labelhash("addr"),
+      reverseRegistrar.address
+    );
 
     // Initialize Operator
     const signers = {
@@ -158,6 +173,11 @@ describe("Nom v2 Integration test", function () {
         }
       )
     );
+
+    ensjs = new ENS({
+      provider: ownerAccount.provider,
+      ensAddress: ens.address,
+    });
   });
 
   describe("empty run", () => {
@@ -230,6 +250,23 @@ describe("Nom v2 Integration test", function () {
     );
   };
 
+  const reverseRegister = async (addr: string, name: string) => {
+    const data = (
+      await operatorOwnedNomV2.populateTransaction.setReverseRecord(addr, name)
+    ).data;
+    if (!data) {
+      throw new Error("Data is undefined");
+    }
+    await userReservePortal.escrow(
+      token.address,
+      0,
+      chainId,
+      operatorOwnedNomV2.address,
+      0,
+      data
+    );
+  };
+
   describe("normal run", () => {
     it("should register", async () => {
       await register(NAME);
@@ -242,8 +279,6 @@ describe("Nom v2 Integration test", function () {
 
       // NFT should be properly minted
       const tokenId = labelhash(NAME);
-      console.log(tokenId, await baseRegistrarImplementation.ownerOf(tokenId));
-      console.log(baseRegistrarImplementation.address);
       expect(await baseRegistrarImplementation.ownerOf(tokenId)).to.be.equal(
         userAccount.address
       );
@@ -279,6 +314,21 @@ describe("Nom v2 Integration test", function () {
 
       // Address should be properly set
       expect(await resolver.text(NAMEHASH_WITH_TLD, KEY)).to.be.equal(VALUE);
+    });
+
+    it("should reverse register", async () => {
+      // Set reverse register
+      await reverseRegister(userAccount.address, NAME);
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(1);
+      await operator.finalizePendingCommitments(pendingCommitments);
+      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+
+      // Address should be properly set
+      const { name } = await ensjs.getName(userAccount.address);
+      expect(name).to.be.equal(NAME);
     });
   });
 });

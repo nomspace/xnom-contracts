@@ -3,6 +3,7 @@
 pragma solidity ^0.8.3;
 
 import "@ensdomains/ens-contracts/contracts/resolvers/Resolver.sol";
+import "@ensdomains/ens-contracts/contracts/registry/ReverseRegistrar.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -139,5 +140,16 @@ contract OperatorOwnedNomV2 is OperatorOwned {
     bytes32 label = keccak256(bytes(name));
     bytes32 node = keccak256(abi.encodePacked(base.baseNode(), label));
     Resolver(ens.resolver(node)).setInterface(node, interfaceID, implementer);
+  }
+
+  function setReverseRecord(address addr, string memory name)
+    external
+    onlyOperatorOrNameOwner(name)
+  {
+    ReverseRegistrar(ens.owner(ADDR_REVERSE_NODE)).setNameForAddr(
+      addr,
+      address(this),
+      name
+    );
   }
 }

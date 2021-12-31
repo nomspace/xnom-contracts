@@ -6,7 +6,7 @@ import { NomRegistrarController__factory } from "../../typechain/factories/NomRe
 import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
 import { BaseRegistrarImplementation } from "../../typechain/BaseRegistrarImplementation";
 import { Commitment } from "../types";
-import { namehash, parseUnits } from "ethers/lib/utils";
+import { parseUnits } from "ethers/lib/utils";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
 import { labelhash } from "@ensdomains/ensjs";
 import { Config } from "../config";
@@ -106,6 +106,16 @@ export const buildConfig = (
       numConfirmations: numConfirmations[chainId],
       whitelist: {
         [operatorOwnedNomV2.address]: {
+          [operatorOwnedNomV2.interface.getSighash("setReverseRecord")]: async (
+            commitment: Commitment
+          ) => {
+            const [addr, name] =
+              operatorOwnedNomV2.interface.decodeFunctionData(
+                "setReverseRecord",
+                commitment.data
+              );
+            return addr === commitment.owner;
+          },
           [operatorOwnedNomV2.interface.getSighash("setText")]: async (
             commitment: Commitment
           ) => {

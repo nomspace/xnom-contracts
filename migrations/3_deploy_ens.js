@@ -59,6 +59,7 @@ module.exports = async function (deployer, network, accounts) {
     const reverseLabel = labelhash("reverse");
     await deployer.deploy(ReverseRegistrar, ens.address, resolver.address);
     const reverseRegistrar = await ReverseRegistrar.deployed();
+    await reverseRegistrar.setController(nom.address, true);
 
     // Add reverseRegistrar to .reverse under the root namespace
     await ens.setSubnodeOwner(ZERO_HASH, reverseLabel, accounts[0]);
