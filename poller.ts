@@ -39,9 +39,21 @@ const config = buildConfig([44787]);
 const operator = new Operator(signers, deployments, config);
 
 const main = async () => {
-  const pendingCommitments = await operator.fetchPendingCommitments();
-  console.log(`Number of pending commitments: ${pendingCommitments.length}`);
-  await operator.finalizePendingCommitments(pendingCommitments);
+  console.log("Poller starting...");
+  while (true) {
+    try {
+      const pendingCommitments = await operator.fetchPendingCommitments();
+      if (pendingCommitments.length > 0) {
+        console.log(
+          `Number of pending commitments: ${pendingCommitments.length}`
+        );
+        await operator.finalizePendingCommitments(pendingCommitments);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    await new Promise((r) => setTimeout(r, 5000));
+  }
 };
 
 main().catch(console.error);
