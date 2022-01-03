@@ -6,6 +6,7 @@ const BaseRegistrarImplementation = artifacts.require(
 const NomRegistrarController = artifacts.require("NomRegistrarController");
 const OperatorOwnedNomV2 = artifacts.require("OperatorOwnedNomV2");
 const ReverseRegistrar = artifacts.require("ReverseRegistrar");
+const OwnableMinimalForwarder = artifacts.require("OwnableMinimalForwarder");
 const namehash = require("eth-ens-namehash");
 const { utils } = require("ethers");
 
@@ -22,6 +23,10 @@ const cUSD = {
 module.exports = async function (deployer, network, accounts) {
   const isCelo = ["alfajores", "celo"].includes(network);
   if (isCelo) {
+    // Deploy Forwarder
+    await deployer.deploy(OwnableMinimalForwarder);
+    await forwarder.deployed();
+
     // Deploy ens
     await deployer.deploy(ENSRegistry);
     const ens = await ENSRegistry.deployed();
@@ -29,6 +34,7 @@ module.exports = async function (deployer, network, accounts) {
     // Deploy resolver
     await deployer.deploy(PublicResolver, ens.address, ZERO_ADDRESS);
     const resolver = await PublicResolver.deployed();
+    await resolver.setTrustedForwarder(forwarder.address, true);
 
     // Add resolver under .resolver
     const resolverNode = namehash.hash("resolver");
@@ -41,25 +47,31 @@ module.exports = async function (deployer, network, accounts) {
     const nomNode = namehash.hash("nom");
     const nomLabel = labelhash("nom");
     await deployer.deploy(BaseRegistrarImplementation, ens.address, nomNode);
-    const nomRegistrar = await BaseRegistrarImplementation.deployed();
-    await ens.setSubnodeOwner(ZERO_HASH, nomLabel, nomRegistrar.address);
-    const controller = await deployer.deploy(
+    const baseRegistrarImplementation =
+      await BaseRegistrarImplementation.deployed();
+    await ens.setSubnodeOwner(
+      ZERO_HASH,
+      nomLabel,
+      baseRegistrarImplementation.address
+    );
+    const nomRegistrarController = await deployer.deploy(
       NomRegistrarController,
-      nomRegistrar.address,
+      baseRegistrarImplementation.address,
       cUSD[network],
       158548959919, // $5 per year
       "0xf60d112c55aef2a97fc434c84a5e3d9e91af75f6" // Multisig
     );
-    await nomRegistrar.addController(controller.address);
-    const nom = await deployer.deploy(OperatorOwnedNomV2, controller.address);
-    await controller.addToWhitelist(nom.address);
+    await baseRegistrarImplementation.addController(
+      nomRegistrarController.address
+    );
+    await nomRegistrarController.addToWhitelist(forwarder.address);
 
     // Deploy a reverse registrar for .nom
     const reverseNode = namehash.hash("reverse");
     const reverseLabel = labelhash("reverse");
     await deployer.deploy(ReverseRegistrar, ens.address, resolver.address);
     const reverseRegistrar = await ReverseRegistrar.deployed();
-    await reverseRegistrar.setController(nom.address, true);
+    await reverseRegistrar.setTrustedForwarder(forwarder.address, true);
 
     // Add reverseRegistrar to .reverse under the root namespace
     await ens.setSubnodeOwner(ZERO_HASH, reverseLabel, accounts[0]);

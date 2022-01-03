@@ -62,12 +62,8 @@ contract FeeBase is Ownable {
       return 0;
     }
     uint256 len = _name.strlen();
-    if (len == 1) {
+    if (len <= 3) {
       return feePerSecond.mul(4);
-    } else if (len == 2) {
-      return feePerSecond.mul(3);
-    } else if (len == 3) {
-      return feePerSecond.mul(2);
     }
     return feePerSecond;
   }

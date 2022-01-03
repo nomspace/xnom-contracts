@@ -22,13 +22,6 @@ import { buildConfig } from "../src/configs/default";
 import namehash from "eth-ens-namehash";
 import ENS from "@ensdomains/ensjs";
 import { BigNumberish, utils, Wallet } from "ethers";
-import { EtherscanProvider } from "@ethersproject/providers";
-import {
-  AbiCoder,
-  keccak256,
-  solidityKeccak256,
-  verifyTypedData,
-} from "ethers/lib/utils";
 
 const labelhash = (label: string) => utils.keccak256(utils.toUtf8Bytes(label));
 
@@ -41,7 +34,6 @@ const FEE_PER_SECOND = 158548959919; // $5 per year
 const AMOUNT = DAY_IN_SECONDS * FEE_PER_SECOND;
 const DURATION = 60 * 60 * 24;
 const NAME = "asdf";
-const NAMEHASH = namehash.hash(NAME);
 const NAMEHASH_WITH_TLD = namehash.hash(`${NAME}.nom`);
 
 const takeSnapshot = async () => {
