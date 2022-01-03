@@ -83,7 +83,7 @@ contract NomRegistrarController is Ownable, FeeBase {
     uint256[] calldata durations,
     address[] calldata resolvers,
     address[] calldata addrs
-  ) public {
+  ) external {
     for (uint256 i = 0; i < names.length; i++) {
       registerWithConfig(
         names[i],

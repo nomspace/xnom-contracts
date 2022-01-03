@@ -7,8 +7,8 @@ import "@ensdomains/ens-contracts/contracts/root/Controllable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../metatx/RelayRecipient.sol";
 
-abstract contract NameResolver {
-  function setName(bytes32 node, string memory name) public virtual;
+interface NameResolver {
+  function setName(bytes32 node, string memory name) external;
 }
 
 bytes32 constant lookup = 0x3031323334353637383961626364656600000000000000000000000000000000;
@@ -18,23 +18,23 @@ bytes32 constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967f
 // namehash('addr.reverse')
 
 contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
-  ENS public ens;
-  NameResolver public defaultResolver;
+  ENS public immutable ens;
+  NameResolver public immutable defaultResolver;
 
   event ReverseClaimed(address indexed addr, bytes32 indexed node);
 
   /**
    * @dev Constructor
-   * @param ensAddr The address of the ENS registry.
-   * @param resolverAddr The address of the default reverse resolver.
+   * @param _ens The address of the ENS registry.
+   * @param _defaultResolver The address of the default reverse resolver.
    */
-  constructor(ENS ensAddr, NameResolver resolverAddr) {
-    ens = ensAddr;
-    defaultResolver = resolverAddr;
+  constructor(ENS _ens, NameResolver _defaultResolver) {
+    ens = _ens;
+    defaultResolver = _defaultResolver;
 
     // Assign ownership of the reverse record to our deployer
     ReverseRegistrar oldRegistrar = ReverseRegistrar(
-      ens.owner(ADDR_REVERSE_NODE)
+      _ens.owner(ADDR_REVERSE_NODE)
     );
     if (address(oldRegistrar) != address(0x0)) {
       oldRegistrar.claim(_msgSender());
@@ -58,7 +58,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
    * @param owner The address to set as the owner of the reverse record in ENS.
    * @return The ENS node hash of the reverse record.
    */
-  function claim(address owner) public returns (bytes32) {
+  function claim(address owner) external returns (bytes32) {
     return _claimWithResolver(_msgSender(), owner, address(0x0));
   }
 
@@ -70,7 +70,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
    * @return The ENS node hash of the reverse record.
    */
   function claimForAddr(address addr, address owner)
-    public
+    external
     authorised(addr)
     returns (bytes32)
   {
@@ -85,7 +85,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
    * @return The ENS node hash of the reverse record.
    */
   function claimWithResolver(address owner, address resolver)
-    public
+    external
     returns (bytes32)
   {
     return _claimWithResolver(_msgSender(), owner, resolver);
@@ -103,7 +103,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
     address addr,
     address owner,
     address resolver
-  ) public authorised(addr) returns (bytes32) {
+  ) external authorised(addr) returns (bytes32) {
     return _claimWithResolver(addr, owner, resolver);
   }
 
@@ -114,7 +114,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
    * @param name The name to set for this address.
    * @return The ENS node hash of the reverse record.
    */
-  function setName(string memory name) public returns (bytes32) {
+  function setName(string memory name) external returns (bytes32) {
     bytes32 node = _claimWithResolver(
       _msgSender(),
       address(this),
@@ -138,7 +138,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
     address addr,
     address owner,
     string memory name
-  ) public authorised(addr) returns (bytes32) {
+  ) external authorised(addr) returns (bytes32) {
     bytes32 node = _claimWithResolver(
       addr,
       address(this),
@@ -154,7 +154,7 @@ contract ReverseRegistrar is Ownable, Controllable, RelayRecipient {
    * @param addr The address to hash
    * @return The ENS node hash.
    */
-  function node(address addr) public pure returns (bytes32) {
+  function node(address addr) external pure returns (bytes32) {
     return keccak256(abi.encodePacked(ADDR_REVERSE_NODE, sha3HexAddress(addr)));
   }
 

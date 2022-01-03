@@ -26,7 +26,7 @@ contract OwnableMinimalForwarder is Ownable, EIP712 {
 
   constructor() EIP712("OwnableMinimalForwarder", "0.0.1") {}
 
-  function getNonce(address from) public view returns (uint256) {
+  function getNonce(address from) external view returns (uint256) {
     return _nonces[from];
   }
 
@@ -52,7 +52,7 @@ contract OwnableMinimalForwarder is Ownable, EIP712 {
   }
 
   function execute(ForwardRequest calldata req, bytes calldata signature)
-    public
+    external
     payable
     onlyOwner
     returns (bool, bytes memory)
