@@ -495,5 +495,31 @@ describe("Nom v2 Integration test", function () {
       const { name } = await ensjs.getName(userAccount.address);
       expect(name).to.be.equal(NAME2);
     });
+
+    it("should batch register", async () => {
+      await nomRegistrarController.addToWhitelist(operatorAccount.address);
+      let args: any = [[], [], [], [], []];
+      for (let i = 0; i < 10; i++) {
+        args[0].push(`${i}`);
+        args[1].push(userAccount.address);
+        args[2].push(DURATION);
+        args[3].push(resolver.address);
+        args[4].push(ZERO_ADDRESS);
+      }
+      await nomRegistrarController
+        .connect(operatorAccount)
+        .batchRegisterWithConfig(args[0], args[1], args[2], args[3], args[4]);
+      for (let i = 0; i < 10; i++) {
+        const name = `${i}`;
+        const tokenId = labelhash(name);
+        expect(await baseRegistrarImplementation.ownerOf(tokenId)).to.be.equal(
+          userAccount.address
+        );
+        expect(
+          await resolver["addr(bytes32)"](namehash.hash(`${name}.nom`))
+        ).to.be.equal(ZERO_ADDRESS);
+      }
+      await nomRegistrarController.removeFromWhitelist(operatorAccount.address);
+    });
   });
 });
