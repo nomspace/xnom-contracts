@@ -5,6 +5,7 @@ import { Operator } from "../src/index";
 import { ReservePortal__factory } from "../typechain/factories/ReservePortal__factory";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
 import { buildConfig } from "../src/configs/default";
+import { OwnableMinimalForwarder__factory } from "../typechain/factories/OwnableMinimalForwarder__factory";
 
 const { PRIVATE_KEY } = process.env;
 if (!PRIVATE_KEY) {
@@ -23,20 +24,27 @@ const signers = {
   [43113]: new Wallet(PRIVATE_KEY || fallbackPrivateKey, providers[43113]),
 };
 
-const deployments = {
+const portals = {
   [44787]: ReservePortal__factory.connect(
-    "0x3E9e0d874C028fb84fE1CF314e4d4FF927457745",
+    "0xE0e61BeF1AD40880F92e2bf7617A2BB538feA655",
     signers[44787]
   ),
   [43113]: ReservePortal__factory.connect(
-    "0x30b3BB80cBE514AE3A2e2316Da66B42f5a882247",
+    "0x1c743749d0070091D964356E710CeFA07B00A58b",
     signers[43113]
+  ),
+};
+
+const forwarders = {
+  [44787]: OwnableMinimalForwarder__factory.connect(
+    "0xb14f85eCbb81A560016385A8fcdef709e6aaFbaf",
+    signers[44787]
   ),
 };
 
 const config = buildConfig([44787]);
 
-const operator = new Operator(signers, deployments, config);
+const operator = new Operator(signers, portals, forwarders, config);
 
 const main = async () => {
   console.log("Poller starting...");

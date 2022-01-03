@@ -155,15 +155,16 @@ describe("Nom v2 Integration test", function () {
     const signers = {
       [chainId]: operatorAccount,
     };
-    const deployments = {
-      [chainId]: {
-        reservePortal: operatorReservePortal,
-        forwarder,
-      },
+    const portals = {
+      [chainId]: operatorReservePortal,
+    };
+    const forwarders = {
+      [chainId]: forwarder,
     };
     operator = new Operator(
       signers,
-      deployments,
+      portals,
+      forwarders,
       buildConfig(
         [chainId],
         signers,

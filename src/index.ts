@@ -1,28 +1,29 @@
 import { Signer } from "ethers";
 import { Config, defaultConfig } from "./config";
 import { ReservePortal } from "../typechain/ReservePortal";
-import { MinimalForwarder } from "../typechain/MinimalForwarder";
 import { TypedEvent } from "../typechain/common";
 import { Commitment } from "./types";
+import { OwnableMinimalForwarder } from "../typechain/OwnableMinimalForwarder";
 
 type Signers = Record<string, Signer>;
-type Deployments = Record<
-  string,
-  { reservePortal: ReservePortal; forwarder: MinimalForwarder }
->;
+type Portals = Record<string, ReservePortal>;
+type Forwarders = Record<string, OwnableMinimalForwarder>;
 
 export class Operator {
   signers: Signers;
-  deployments: Deployments;
+  portals: Portals;
+  forwarders: Forwarders;
   config: Config;
 
   constructor(
     signers: Signers,
-    deployments: Deployments,
+    portals: Portals,
+    forwarders: Forwarders,
     config: Config = defaultConfig
   ) {
     this.signers = signers;
-    this.deployments = deployments;
+    this.portals = portals;
+    this.forwarders = forwarders;
     this.config = config;
   }
 
@@ -36,9 +37,7 @@ export class Operator {
       }, {});
 
     const allPendingCommitments: Commitment[] = [];
-    for (const [chainId, { reservePortal }] of Object.entries(
-      this.deployments
-    )) {
+    for (const [chainId, reservePortal] of Object.entries(this.portals)) {
       const now = Math.floor(Date.now() / 1000);
       const eventOptions = [0, "latest"];
       const [
@@ -100,8 +99,8 @@ export class Operator {
         );
         continue;
       }
-      const { reservePortal, forwarder } =
-        this.deployments[commitment.originChainId];
+      const reservePortal = this.portals[commitment.originChainId];
+      const forwarder = this.forwarders[commitment.chainId.toString()];
       const originConfig = this.config[commitment.originChainId];
       const destConfig = this.config[commitment.chainId.toString()];
       try {

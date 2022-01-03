@@ -2,12 +2,9 @@ require("dotenv").config({ path: __dirname + "/.env" });
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Signer, Wallet } from "ethers";
 import { NomRegistrarController__factory } from "../../typechain/factories/NomRegistrarController__factory";
-import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
-import { BaseRegistrarImplementation } from "../../typechain/BaseRegistrarImplementation";
 import { Commitment } from "../types";
 import { parseUnits } from "ethers/lib/utils";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
-import { labelhash } from "@ensdomains/ensjs";
 import { Config } from "../config";
 import { PublicResolver__factory } from "../../typechain/factories/PublicResolver__factory";
 import { ReverseRegistrar__factory } from "../../typechain/factories/ReverseRegistrar__factory";
@@ -35,15 +32,15 @@ const NUM_CONFIRMATIONS: Record<string, number> = {
 };
 
 const NOM_REGISTRAR_CONTROLLERS: Record<string, string> = {
-  [44787]: "0x668551cDE8842F58c473744e5D0726a1fD596c24",
+  [44787]: "0x0922a1b101bF136ED352cE9714Da81f2fE75FD61",
 };
 
 const REVERSE_REGISTRARS: Record<string, string> = {
-  [44787]: "",
+  [44787]: "0xCF67F155cC944304Bff8306bcC1cFda78B08745D",
 };
 
 const RESOLVERS: Record<string, string> = {
-  [44787]: "",
+  [44787]: "0x39d99E622E3c3371b19465C76980f93AF4FaF2fa",
 };
 
 const ACCEPTED_CURRENCIES: Record<
