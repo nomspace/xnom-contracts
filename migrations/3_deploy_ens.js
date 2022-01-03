@@ -24,7 +24,7 @@ module.exports = async function (deployer, network, accounts) {
   if (isCelo) {
     // Deploy Forwarder
     await deployer.deploy(OwnableMinimalForwarder);
-    await forwarder.deployed();
+    forwarder = await OwnableMinimalForwarder.deployed();
 
     // Deploy ens
     await deployer.deploy(ENSRegistry);

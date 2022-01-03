@@ -1,14 +1,18 @@
-const { getNomsToMigrate } = require("./migrate");
+const { getNomsToMigrate } = require("./fetchV1");
 
-const OperatorOwnedNomV2 = artifacts.require("OperatorOwnedNomV2");
+const NomRegistrarController = artifacts.require("NomRegistrarController");
 const PublicResolver = artifacts.require("PublicResolver");
 
 const BUFFER = 60 * 60 * 24 * 7; // 1 week gift
 const BUCKET_SIZE = 20;
-const START = 4800;
+const START = 31000;
 
-module.exports = async (deployer) => {
-  const operatorOwnedNomV2 = await OperatorOwnedNomV2.deployed();
+module.exports = async (t) => {
+  const nomRegistrarController = await NomRegistrarController.deployed();
+  const [operator] = await web3.eth.getAccounts();
+  if (!(await nomRegistrarController.whitelist(operator))) {
+    await nomRegistrarController.addToWhitelist(operator);
+  }
   const resolver = await PublicResolver.deployed();
 
   const toMigrate = await getNomsToMigrate();
@@ -27,7 +31,7 @@ module.exports = async (deployer) => {
     }
     const names = noms.map(({ name }) => name);
     try {
-      await operatorOwnedNomV2.batchRegister(
+      await nomRegistrarController.batchRegisterWithConfig(
         names,
         noms.map(({ owner }) => owner),
         noms.map(({ expiration }) => expiration - now + BUFFER),
@@ -39,4 +43,5 @@ module.exports = async (deployer) => {
     }
     i += BUCKET_SIZE;
   }
+  await nomRegistrarController.removeFromWhitelist(operator);
 };

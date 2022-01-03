@@ -1,7 +1,7 @@
 require("dotenv").config;
 const Web3 = require("web3");
-const NomAbi = require("../scripts/abi/Nom.json");
-const MulticallAbi = require("../scripts/abi/Multicall.json");
+const NomAbi = require("./abi/Nom.json");
+const MulticallAbi = require("./abi/Multicall.json");
 const { ethers } = require("ethers");
 const { normalize } = require("eth-ens-namehash");
 const fs = require("fs");
