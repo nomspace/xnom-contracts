@@ -4,7 +4,6 @@ const BaseRegistrarImplementation = artifacts.require(
   "BaseRegistrarImplementation"
 );
 const NomRegistrarController = artifacts.require("NomRegistrarController");
-const OperatorOwnedNomV2 = artifacts.require("OperatorOwnedNomV2");
 const ReverseRegistrar = artifacts.require("ReverseRegistrar");
 const OwnableMinimalForwarder = artifacts.require("OwnableMinimalForwarder");
 const namehash = require("eth-ens-namehash");
