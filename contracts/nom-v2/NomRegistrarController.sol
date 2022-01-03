@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.8.4;
 
 import "@ensdomains/ens-contracts/contracts/ethregistrar/BaseRegistrarImplementation.sol";
@@ -91,7 +93,9 @@ contract NomRegistrarController is Ownable, FeeBase {
     address addr
   ) public {
     uint256 cost = rentPrice(name, duration, msg.sender);
-    feeCurrency.safeTransferFrom(msg.sender, treasury, cost);
+    if (cost > 0) {
+      feeCurrency.safeTransferFrom(msg.sender, treasury, cost);
+    }
 
     bytes32 label = keccak256(bytes(name));
     uint256 tokenId = uint256(label);

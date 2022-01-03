@@ -12,15 +12,11 @@ export enum ChainId {
 }
 
 export type CommitmentCheck = (commitment: Commitment) => Promise<boolean>;
-// Selectors mapping to commitment checks
-export type Selectors = Record<string, CommitmentCheck>;
-// Targets mapping to accepted selectors
-export type Targets = Record<string, Selectors>;
 
 export type ChainConfig = {
   numConfirmations: number;
   // Whitelisted addresses that map to whitelisted selectors
-  whitelist: Targets;
+  whitelist: CommitmentCheck;
 };
 
 export type Config = Record<string, ChainConfig>;

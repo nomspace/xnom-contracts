@@ -49,14 +49,16 @@ describe("ReservePortal", function () {
     it("should work", async function () {
       await token.approve(reservePortal.address, AMOUNT);
       const balanceBefore = await token.balanceOf(owner.address);
-      await reservePortal.escrow(
-        token.address,
-        AMOUNT,
-        chainId,
-        target.address,
-        0,
-        "0x00"
-      );
+      const tx = {
+        to: target.address,
+        from: owner.address,
+        value: 0,
+        gas: 2e6,
+        nonce: 0,
+        data: "0x00",
+      };
+      const signature = "0x01";
+      await reservePortal.escrow(token.address, AMOUNT, chainId, tx, signature);
       const balanceAfter = await token.balanceOf(owner.address);
       expect(balanceBefore.sub(balanceAfter)).to.be.equal(AMOUNT);
 
@@ -66,9 +68,13 @@ describe("ReservePortal", function () {
       expect(commitment.currency).to.be.equal(token.address);
       expect(commitment.amount).to.be.equal(AMOUNT);
       expect(commitment.chainId).to.be.equal(chainId);
-      expect(commitment.target).to.be.equal(target.address);
-      expect(commitment.value).to.be.equal(0);
-      expect(commitment.data).to.be.equal("0x00");
+      expect(commitment.request.from).to.be.equal(owner.address);
+      expect(commitment.request.to).to.be.equal(target.address);
+      expect(commitment.request.value).to.be.equal(0);
+      expect(commitment.request.gas).to.be.equal(2e6);
+      expect(commitment.request.nonce).to.be.equal(0);
+      expect(commitment.request.data).to.be.equal("0x00");
+      expect(commitment.signature).to.be.equal("0x01");
       expect(commitment.voided).to.be.false;
       expect(commitment.committed).to.be.false;
     });

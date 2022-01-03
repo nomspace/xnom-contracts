@@ -7,11 +7,19 @@ export type Commitment = {
   amount: BigNumber;
   timestamp: BigNumber;
   chainId: BigNumber;
-  target: string;
-  value: BigNumber;
-  data: string;
+  request: Request;
+  signature: string;
   voided: boolean;
   committed: boolean;
 
   originChainId: string;
+};
+
+export type Request = {
+  from: string;
+  to: string;
+  value: BigNumber;
+  gas: BigNumber;
+  nonce: BigNumber;
+  data: string;
 };

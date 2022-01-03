@@ -15,6 +15,15 @@ contract ReservePortal is Ownable {
   uint256 public voidDelay;
   address public operator;
 
+  struct Request {
+    address from;
+    address to;
+    uint256 value;
+    uint256 gas;
+    uint256 nonce;
+    bytes data;
+  }
+
   struct Commitment {
     // Commitment metadata
     uint256 index;
@@ -22,11 +31,10 @@ contract ReservePortal is Ownable {
     IERC20 currency;
     uint256 amount;
     uint256 timestamp;
-    // Call metadata
     uint256 chainId;
-    address target;
-    uint256 value;
-    bytes data;
+    // Request metadata
+    Request request;
+    bytes signature;
     // State metadata
     bool voided;
     bool committed;
@@ -52,12 +60,6 @@ contract ReservePortal is Ownable {
     _;
   }
 
-  modifier onlyCommitmentOwner(uint256 _commitmentIndex) {
-    Commitment storage commitment = commitments[_commitmentIndex];
-    require(commitment.owner == msg.sender, "Caller is not commitment owner");
-    _;
-  }
-
   modifier pendingCommitment(uint256 _commitmentIndex) {
     Commitment storage commitment = commitments[_commitmentIndex];
     require(!commitment.voided, "Commitment is already voided");
@@ -71,9 +73,8 @@ contract ReservePortal is Ownable {
     IERC20 _currency,
     uint256 _amount,
     uint256 _chainId,
-    address _target,
-    uint256 _value,
-    bytes memory _data
+    Request calldata _request,
+    bytes calldata _signature
   ) external {
     _currency.safeTransferFrom(msg.sender, address(this), _amount);
     uint256 currentTime = block.timestamp;
@@ -84,9 +85,8 @@ contract ReservePortal is Ownable {
       _amount,
       currentTime,
       _chainId,
-      _target,
-      _value,
-      _data,
+      _request,
+      _signature,
       false,
       false
     );
@@ -95,7 +95,6 @@ contract ReservePortal is Ownable {
 
   function void(uint256 _commitmentIndex)
     external
-    onlyCommitmentOwner(_commitmentIndex)
     pendingCommitment(_commitmentIndex)
   {
     Commitment storage commitment = commitments[_commitmentIndex];

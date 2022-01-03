@@ -1,7 +1,6 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Signer, Wallet } from "ethers";
-import { OperatorOwnedNomV2__factory } from "../../typechain/factories/OperatorOwnedNomV2__factory";
 import { NomRegistrarController__factory } from "../../typechain/factories/NomRegistrarController__factory";
 import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
 import { BaseRegistrarImplementation } from "../../typechain/BaseRegistrarImplementation";
@@ -10,6 +9,8 @@ import { parseUnits } from "ethers/lib/utils";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
 import { labelhash } from "@ensdomains/ensjs";
 import { Config } from "../config";
+import { PublicResolver__factory } from "../../typechain/factories/PublicResolver__factory";
+import { ReverseRegistrar__factory } from "../../typechain/factories/ReverseRegistrar__factory";
 
 const { PRIVATE_KEY } = process.env;
 if (!PRIVATE_KEY) {
@@ -33,16 +34,16 @@ const NUM_CONFIRMATIONS: Record<string, number> = {
   [43113]: 3,
 };
 
-const OPERATER_OWNED_NOMS: Record<string, string> = {
-  [44787]: "0x7cD4E8f88488FB82A80e6F86373384cf9b080dD5",
-};
-
 const NOM_REGISTRAR_CONTROLLERS: Record<string, string> = {
   [44787]: "0x668551cDE8842F58c473744e5D0726a1fD596c24",
 };
 
-const BASE_REGISTRAR_CONTROLLERS: Record<string, string> = {
-  [44787]: "0xD1Ea80BaF9f35Bd56F26F3Ad75D6b65307a133ec",
+const REVERSE_REGISTRARS: Record<string, string> = {
+  [44787]: "",
+};
+
+const RESOLVERS: Record<string, string> = {
+  [44787]: "",
 };
 
 const ACCEPTED_CURRENCIES: Record<
@@ -59,123 +60,82 @@ const ACCEPTED_CURRENCIES: Record<
   },
 };
 
-const isNameOwner = async (
-  name: string,
-  owner: string,
-  baseRegistrarImplementation: BaseRegistrarImplementation
-) => {
-  const tokenId = labelhash(name);
-  try {
-    const nameOwner = await baseRegistrarImplementation.ownerOf(tokenId);
-    return nameOwner === owner;
-  } catch (e) {
-    console.error(
-      "Failed to get ownerOf, probably because there is no owner",
-      e
-    );
-  }
-  return false;
-};
-
 export const buildConfig = (
   chainIds: number[],
   signers = SIGNERS,
   numConfirmations = NUM_CONFIRMATIONS,
   acceptedCurrencies = ACCEPTED_CURRENCIES,
-  operatorOwnedNoms = OPERATER_OWNED_NOMS,
   nomRegistrarControllers = NOM_REGISTRAR_CONTROLLERS,
-  baseRegistrarControllers = BASE_REGISTRAR_CONTROLLERS
+  reverseRegistrars = REVERSE_REGISTRARS,
+  resolvers = RESOLVERS
 ) => {
   const config: Config = {};
   for (const chainId of chainIds) {
-    const operatorOwnedNomV2 = OperatorOwnedNomV2__factory.connect(
-      operatorOwnedNoms[chainId],
-      signers[chainId]
-    );
     const nomRegistrarController = NomRegistrarController__factory.connect(
       nomRegistrarControllers[chainId],
       signers[chainId]
     );
-    const baseRegistrarImplementation =
-      BaseRegistrarImplementation__factory.connect(
-        baseRegistrarControllers[chainId],
-        signers[chainId]
-      );
+    const reverseRegistrar = ReverseRegistrar__factory.connect(
+      reverseRegistrars[chainId],
+      signers[chainId]
+    );
+    const resolver = PublicResolver__factory.connect(
+      resolvers[chainId],
+      signers[chainId]
+    );
 
     config[chainId] = {
       numConfirmations: numConfirmations[chainId],
-      whitelist: {
-        [operatorOwnedNomV2.address]: {
-          [operatorOwnedNomV2.interface.getSighash("setReverseRecord")]: async (
-            commitment: Commitment
-          ) => {
-            const [addr, name] =
-              operatorOwnedNomV2.interface.decodeFunctionData(
-                "setReverseRecord",
-                commitment.data
-              );
-            return addr === commitment.owner;
-          },
-          [operatorOwnedNomV2.interface.getSighash("setText")]: async (
-            commitment: Commitment
-          ) => {
-            const [name, key, value] =
-              operatorOwnedNomV2.interface.decodeFunctionData(
-                "setText",
-                commitment.data
-              );
-            return isNameOwner(
-              name,
-              commitment.owner,
-              baseRegistrarImplementation
-            );
-          },
-          [operatorOwnedNomV2.interface.getSighash("setAddr(string,address)")]:
-            async (commitment: Commitment) => {
-              const [name, addr] =
-                operatorOwnedNomV2.interface.decodeFunctionData(
-                  "setAddr(string,address)",
-                  commitment.data
-                );
-              return isNameOwner(
-                name,
-                commitment.owner,
-                baseRegistrarImplementation
-              );
-            },
-          [operatorOwnedNomV2.interface.getSighash("register")]: async (
-            commitment: Commitment
-          ) => {
-            const [name, owner, duration, resolver, addr] =
-              operatorOwnedNomV2.interface.decodeFunctionData(
-                "register",
-                commitment.data
-              );
-            // Disallow reserve abuse
-            if (owner === operatorOwnedNomV2.address) {
-              console.warn(
-                `Commitment ${commitment.index} is using the operator to register`
-              );
-              return false;
+      whitelist: async (commitment: Commitment) => {
+        switch (commitment.request.to) {
+          case resolver.address:
+            switch (commitment.request.data.slice(0, 10)) {
+              case resolver.interface.getSighash("setText"):
+                return true;
+              case resolver.interface.getSighash("setAddr(bytes32,address)"):
+                return true;
             }
-            const acceptedCurrency =
-              acceptedCurrencies[commitment.originChainId];
-            if (acceptedCurrency.address !== commitment.currency) {
-              console.warn(
-                `Commitment ${commitment.index} uses an incorrect currency to register`
-              );
-              return false;
+          case reverseRegistrar.address:
+            switch (commitment.request.data.slice(0, 10)) {
+              case reverseRegistrar.interface.getSighash("setName"):
+                return true;
             }
-            const cost = (
-              await nomRegistrarController.rentPrice(name, duration, owner)
-            ).toString();
+          case nomRegistrarController.address:
+            switch (commitment.request.data.slice(0, 10)) {
+              case nomRegistrarController.interface.getSighash(
+                "registerWithConfig"
+              ):
+                const [name, owner, duration, resolver, addr] =
+                  nomRegistrarController.interface.decodeFunctionData(
+                    "registerWithConfig",
+                    commitment.request.data
+                  );
+                // Disallow reserve abuse
+                if (owner === nomRegistrarController.address) {
+                  console.warn(
+                    `Commitment ${commitment.index} is using the operator to register`
+                  );
+                  return false;
+                }
+                const acceptedCurrency =
+                  acceptedCurrencies[commitment.originChainId];
+                if (acceptedCurrency.address !== commitment.currency) {
+                  console.warn(
+                    `Commitment ${commitment.index} uses an incorrect currency to register`
+                  );
+                  return false;
+                }
+                const cost = (
+                  await nomRegistrarController.rentPrice(name, duration, owner)
+                ).toString();
 
-            // `cost` is denominated in 18 decimals
-            return commitment.amount.gte(
-              parseUnits(cost, acceptedCurrency.decimals - 18)
-            );
-          },
-        },
+                // `cost` is denominated in 18 decimals
+                return commitment.amount.gte(
+                  parseUnits(cost, acceptedCurrency.decimals - 18)
+                );
+            }
+        }
+        return false;
       },
     };
   }

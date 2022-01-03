@@ -1,15 +1,19 @@
 import { Signer } from "ethers";
 import { Config, defaultConfig } from "./config";
 import { ReservePortal } from "../typechain/ReservePortal";
+import { MinimalForwarder } from "../typechain/MinimalForwarder";
 import { TypedEvent } from "../typechain/common";
 import { Commitment } from "./types";
 
 type Signers = Record<string, Signer>;
-type Deployments = Record<string, ReservePortal>;
+type Deployments = Record<
+  string,
+  { reservePortal: ReservePortal; forwarder: MinimalForwarder }
+>;
 
 export class Operator {
-  signers: Record<string, Signer>;
-  deployments: Record<string, ReservePortal>;
+  signers: Signers;
+  deployments: Deployments;
   config: Config;
 
   constructor(
@@ -32,7 +36,9 @@ export class Operator {
       }, {});
 
     const allPendingCommitments: Commitment[] = [];
-    for (const [chainId, reservePortal] of Object.entries(this.deployments)) {
+    for (const [chainId, { reservePortal }] of Object.entries(
+      this.deployments
+    )) {
       const now = Math.floor(Date.now() / 1000);
       const eventOptions = [0, "latest"];
       const [
@@ -94,18 +100,30 @@ export class Operator {
         );
         continue;
       }
-      const reservePortal = this.deployments[commitment.originChainId];
+      const { reservePortal, forwarder } =
+        this.deployments[commitment.originChainId];
       const originConfig = this.config[commitment.originChainId];
       const destConfig = this.config[commitment.chainId.toString()];
       try {
-        const destSigner = this.signers[commitment.chainId.toString()];
-        const params = {
-          to: commitment.target,
-          value: commitment.value,
-          data: commitment.data,
-        };
-        const gasLimit = await destSigner.estimateGas(params);
-        const tx = await destSigner.sendTransaction({ ...params, gasLimit });
+        const gasLimit = await forwarder.estimateGas.execute(
+          commitment.request,
+          commitment.signature
+        );
+        const [success] = await forwarder.callStatic.execute(
+          commitment.request,
+          commitment.signature
+        );
+        if (!success) {
+          console.warn(
+            `Commitment ${commitment.index} from chainId ${commitment.originChainId} will likely fail. Skipping`
+          );
+          continue;
+        }
+        const tx = await forwarder.execute(
+          commitment.request,
+          commitment.signature,
+          { gasLimit }
+        );
         await tx.wait(destConfig?.numConfirmations);
         console.info(
           `Fulfilled ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${tx.hash}`
@@ -126,14 +144,6 @@ export class Operator {
     if (!destConfig) {
       return false;
     }
-    const targetConfig = destConfig.whitelist[commitment.target];
-    if (!targetConfig) {
-      return false;
-    }
-    const validCommitmentCheck = targetConfig[commitment.data.slice(0, 10)];
-    if (!validCommitmentCheck) {
-      return false;
-    }
-    return await validCommitmentCheck(commitment);
+    return await destConfig.whitelist(commitment);
   }
 }
