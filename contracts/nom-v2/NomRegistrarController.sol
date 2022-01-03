@@ -77,12 +77,22 @@ contract NomRegistrarController is Ownable, FeeBase {
     return valid(name) && base.available(uint256(label));
   }
 
-  function register(
-    string calldata name,
-    address owner,
-    uint256 duration
-  ) external {
-    registerWithConfig(name, owner, duration, address(0), address(0));
+  function batchRegisterWithConfig(
+    string[] calldata names,
+    address[] calldata owners,
+    uint256[] calldata durations,
+    address[] calldata resolvers,
+    address[] calldata addrs
+  ) public {
+    for (uint256 i = 0; i < names.length; i++) {
+      registerWithConfig(
+        names[i],
+        owners[i],
+        durations[i],
+        resolvers[i],
+        addrs[i]
+      );
+    }
   }
 
   function registerWithConfig(

@@ -30,11 +30,13 @@ const ZERO_HASH =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 const TLD = "nom";
 const DAY_IN_SECONDS = 60 * 60 * 24;
+const DURATION = DAY_IN_SECONDS;
 const FEE_PER_SECOND = 158548959919; // $5 per year
-const AMOUNT = DAY_IN_SECONDS * FEE_PER_SECOND;
-const DURATION = 60 * 60 * 24;
+const AMOUNT = (DURATION * FEE_PER_SECOND).toString();
 const NAME = "asdf";
 const NAMEHASH_WITH_TLD = namehash.hash(`${NAME}.nom`);
+const NAME2 = "fdsa";
+const NAMEHASH2_WITH_TLD = namehash.hash(`${NAME2}.nom`);
 
 const takeSnapshot = async () => {
   return await ethers.provider.send("evm_snapshot", []);
@@ -240,7 +242,10 @@ describe("Nom v2 Integration test", function () {
     return await userAccount._signTypedData(domain, types, values);
   };
 
-  const register = async (name: string) => {
+  const register = async (
+    name: string,
+    nomRegistrarController: NomRegistrarController
+  ) => {
     const { from, nonce, gas, value } = await getTxDefaults();
     const { to, data } =
       await nomRegistrarController.populateTransaction.registerWithConfig(
@@ -254,12 +259,10 @@ describe("Nom v2 Integration test", function () {
       throw new Error(`Tx fields are incomplete: ${to} ${data}`);
     }
     const signature = await getSignature(from, to, value, gas, nonce, data);
-    await token
-      .connect(userAccount)
-      .approve(userReservePortal.address, AMOUNT.toString());
+    await token.connect(userAccount).approve(userReservePortal.address, AMOUNT);
     await userReservePortal.escrow(
       token.address,
-      AMOUNT.toString(),
+      AMOUNT,
       chainId,
       {
         from,
@@ -350,9 +353,9 @@ describe("Nom v2 Integration test", function () {
     );
   };
 
-  describe("normal run", () => {
+  describe("normal x-chain run", () => {
     it("should register", async () => {
-      await register(NAME);
+      await register(NAME, nomRegistrarController);
       let pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(1);
       await operator.finalizePendingCommitments(pendingCommitments);
@@ -428,6 +431,69 @@ describe("Nom v2 Integration test", function () {
       // Address should be properly set
       const { name } = await ensjs.getName(userAccount.address);
       expect(name).to.be.equal(NAME);
+    });
+  });
+
+  describe("normal run", () => {
+    it("should register", async () => {
+      await token.approve(nomRegistrarController.address, AMOUNT);
+      const balanceBefore = await token.balanceOf(userAccount.address);
+      await nomRegistrarController
+        .connect(userAccount)
+        .registerWithConfig(
+          NAME2,
+          userAccount.address,
+          DURATION,
+          resolver.address,
+          ZERO_ADDRESS
+        );
+      const balanceAfter = await token.balanceOf(userAccount.address);
+      expect(balanceBefore.sub(balanceAfter)).to.be.equal(AMOUNT);
+
+      // NFT should be properly minted
+      const tokenId = labelhash(NAME2);
+      expect(await baseRegistrarImplementation.ownerOf(tokenId)).to.be.equal(
+        userAccount.address
+      );
+      expect(await resolver["addr(bytes32)"](NAMEHASH2_WITH_TLD)).to.be.equal(
+        ZERO_ADDRESS
+      );
+    });
+
+    it("should setAddr", async () => {
+      await resolver
+        .connect(userAccount)
+        ["setAddr(bytes32,address)"](NAMEHASH2_WITH_TLD, userAccount.address);
+
+      expect(await resolver["addr(bytes32)"](NAMEHASH2_WITH_TLD)).to.be.equal(
+        userAccount.address
+      );
+    });
+
+    it("should not setAddr if user is not the owner", async () => {
+      const nhash = namehash.hash(`random.${TLD}`);
+      await expect(
+        resolver
+          .connect(userAccount)
+          ["setAddr(bytes32,address)"](nhash, userAccount.address)
+      ).to.be.revertedWith("Transaction reverted");
+    });
+
+    it("should setText", async () => {
+      const KEY = "com.github";
+      const VALUE = "https://github.com/nomspace";
+      await resolver
+        .connect(userAccount)
+        .setText(NAMEHASH2_WITH_TLD, KEY, VALUE);
+
+      expect(await resolver.text(NAMEHASH2_WITH_TLD, KEY)).to.be.equal(VALUE);
+    });
+
+    it("should reverse register", async () => {
+      await reverseRegistrar.connect(userAccount).setName(NAME2);
+
+      const { name } = await ensjs.getName(userAccount.address);
+      expect(name).to.be.equal(NAME2);
     });
   });
 });
