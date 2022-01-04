@@ -127,6 +127,9 @@ contract NomRegistrarController is Ownable, FeeBase {
         Resolver(resolver).setAddr(nodehash, addr);
       }
 
+      // Set the name resolution
+      Resolver(resolver).setName(nodehash, name);
+
       // Now transfer full ownership to the expeceted owner
       base.reclaim(tokenId, owner);
       base.transferFrom(address(this), owner, tokenId);

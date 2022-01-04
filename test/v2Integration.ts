@@ -435,7 +435,7 @@ describe("Nom v2 Integration test", function () {
     });
   });
 
-  describe("normal run", () => {
+  describe.only("normal run", () => {
     it("should register", async () => {
       await token.approve(nomRegistrarController.address, AMOUNT);
       const balanceBefore = await token.balanceOf(userAccount.address);
@@ -459,6 +459,7 @@ describe("Nom v2 Integration test", function () {
       expect(await resolver["addr(bytes32)"](NAMEHASH2_WITH_TLD)).to.be.equal(
         ZERO_ADDRESS
       );
+      expect(await resolver.name(NAMEHASH2_WITH_TLD)).to.be.equal(NAME2);
     });
 
     it("should setAddr", async () => {
