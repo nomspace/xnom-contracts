@@ -22,10 +22,7 @@ const cUSD = {
 module.exports = async function (deployer, network, accounts) {
   const isCelo = ["alfajores", "celo"].includes(network);
   if (isCelo) {
-    // Deploy Forwarder
-    await deployer.deploy(OwnableMinimalForwarder);
-    forwarder = await OwnableMinimalForwarder.deployed();
-
+    const forwarder = await OwnableMinimalForwarder.deployed();
     // Deploy ens
     await deployer.deploy(ENSRegistry);
     const ens = await ENSRegistry.deployed();
