@@ -1,6 +1,6 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { providers, Signer, Wallet } from "ethers";
+import { BigNumber, providers, Signer, Wallet } from "ethers";
 import { NomRegistrarController__factory } from "../../typechain/factories/NomRegistrarController__factory";
 import { Commitment } from "../types";
 import { formatUnits } from "ethers/lib/utils";
@@ -159,14 +159,12 @@ export const buildConfig = (
                 }
                 const cost = (
                   await nomRegistrarController.rentPrice(name, duration, owner)
-                ).toString();
+                )
+                  .shr(18)
+                  .shl(acceptedCurrency.decimals);
 
                 // `cost` is denominated in 18 decimals
-                return commitment.amount.gte(
-                  Math.floor(
-                    Number(formatUnits(cost, 18 - acceptedCurrency.decimals))
-                  )
-                );
+                return commitment.amount.gte(cost);
             }
         }
         return false;

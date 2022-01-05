@@ -55,6 +55,7 @@ describe("ReservePortal", function () {
         value: 0,
         gas: 2e6,
         nonce: 0,
+        chainId: 5,
         data: "0x00",
       };
       const signature = "0x01";
@@ -73,6 +74,7 @@ describe("ReservePortal", function () {
       expect(commitment.request.value).to.be.equal(0);
       expect(commitment.request.gas).to.be.equal(2e6);
       expect(commitment.request.nonce).to.be.equal(0);
+      expect(commitment.request.chainId).to.be.equal(5);
       expect(commitment.request.data).to.be.equal("0x00");
       expect(commitment.signature).to.be.equal("0x01");
       expect(commitment.voided).to.be.false;
