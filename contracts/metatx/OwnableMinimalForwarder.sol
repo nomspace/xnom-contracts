@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "./EIP712Mod.sol";
 
-contract OwnableMinimalForwarder is Ownable, EIP712 {
+contract OwnableMinimalForwarder is Ownable, EIP712Mod {
   using ECDSA for bytes32;
 
   struct ForwardRequest {
@@ -14,17 +14,18 @@ contract OwnableMinimalForwarder is Ownable, EIP712 {
     uint256 value;
     uint256 gas;
     uint256 nonce;
+    uint256 chainId;
     bytes data;
   }
 
   bytes32 private constant _TYPEHASH =
     keccak256(
-      "ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data)"
+      "ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,uint256 chainId,bytes data)"
     );
 
   mapping(address => uint256) private _nonces;
 
-  constructor() EIP712("OwnableMinimalForwarder", "0.0.1") {}
+  constructor() EIP712Mod("OwnableMinimalForwarder", "0.0.1") {}
 
   function getNonce(address from) external view returns (uint256) {
     return _nonces[from];
@@ -36,6 +37,7 @@ contract OwnableMinimalForwarder is Ownable, EIP712 {
     returns (bool)
   {
     address signer = _hashTypedDataV4(
+      req.chainId,
       keccak256(
         abi.encode(
           _TYPEHASH,
@@ -44,6 +46,7 @@ contract OwnableMinimalForwarder is Ownable, EIP712 {
           req.value,
           req.gas,
           req.nonce,
+          req.chainId,
           keccak256(req.data)
         )
       )

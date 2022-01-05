@@ -21,5 +21,6 @@ export type Request = {
   value: BigNumber;
   gas: BigNumber;
   nonce: BigNumber;
+  chainId: BigNumber;
   data: string;
 };

@@ -48,6 +48,7 @@ const revertSnapshot = async (snapshotId: number) => {
 
 describe("Nom v2 Integration test", function () {
   let chainId: number;
+  const anotherChainId = 4;
   let ownerAccount: SignerWithAddress;
   let operatorAccount: SignerWithAddress;
   let userAccount: Wallet;
@@ -219,7 +220,7 @@ describe("Nom v2 Integration test", function () {
     const domain = {
       name: "OwnableMinimalForwarder",
       version: "0.0.1",
-      chainId,
+      chainId: anotherChainId,
       verifyingContract: forwarder.address,
     };
     const types = {
@@ -229,6 +230,7 @@ describe("Nom v2 Integration test", function () {
         { name: "value", type: "uint256" },
         { name: "gas", type: "uint256" },
         { name: "nonce", type: "uint256" },
+        { name: "chainId", type: "uint256" },
         { name: "data", type: "bytes" },
       ],
     };
@@ -238,6 +240,7 @@ describe("Nom v2 Integration test", function () {
       value,
       gas,
       nonce,
+      chainId: anotherChainId,
       data,
     };
     return await userAccount._signTypedData(domain, types, values);
@@ -271,6 +274,7 @@ describe("Nom v2 Integration test", function () {
         gas,
         value,
         nonce,
+        chainId: anotherChainId,
         data,
       },
       signature
@@ -296,6 +300,7 @@ describe("Nom v2 Integration test", function () {
         gas,
         value,
         nonce,
+        chainId: anotherChainId,
         data,
       },
       signature
@@ -323,6 +328,7 @@ describe("Nom v2 Integration test", function () {
         gas,
         value,
         nonce,
+        chainId: anotherChainId,
         data,
       },
       signature
@@ -348,6 +354,7 @@ describe("Nom v2 Integration test", function () {
         gas,
         value,
         nonce,
+        chainId: anotherChainId,
         data,
       },
       signature

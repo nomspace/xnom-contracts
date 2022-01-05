@@ -21,6 +21,7 @@ contract ReservePortal is Ownable {
     uint256 value;
     uint256 gas;
     uint256 nonce;
+    uint256 chainId;
     bytes data;
   }
 
