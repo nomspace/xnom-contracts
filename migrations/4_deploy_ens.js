@@ -37,6 +37,7 @@ module.exports = async function (deployer, network, accounts) {
     const resolverLabel = labelhash("resolver");
     await ens.setSubnodeOwner(ZERO_HASH, resolverLabel, accounts[0]);
     await ens.setResolver(resolverNode, resolver.address);
+    await ens.setTrustedForwarder(forwarder.address, true);
     await resolver.setAddr(resolverNode, resolver.address);
 
     // Deploy a registrar for .nom
