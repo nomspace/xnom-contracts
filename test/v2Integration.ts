@@ -52,6 +52,7 @@ describe("Nom v2 Integration test", function () {
   let ownerAccount: SignerWithAddress;
   let operatorAccount: SignerWithAddress;
   let userAccount: Wallet;
+  let userAccount2: Wallet;
   let userReservePortal: ReservePortal;
   let forwarder: OwnableMinimalForwarder;
   let operatorReservePortal: ReservePortal;
@@ -74,6 +75,11 @@ describe("Nom v2 Integration test", function () {
     userAccount = Wallet.createRandom().connect(ethers.provider);
     await ownerAccount.sendTransaction({
       to: userAccount.address,
+      value: utils.parseEther("1"),
+    });
+    userAccount2 = Wallet.createRandom().connect(ethers.provider);
+    await ownerAccount.sendTransaction({
+      to: userAccount2.address,
       value: utils.parseEther("1"),
     });
 
@@ -120,6 +126,10 @@ describe("Nom v2 Integration test", function () {
         .connect(ownerAccount)
         .deploy(ens.address, nomNode);
     await baseRegistrarImplementation.deployed();
+    await baseRegistrarImplementation.setTrustedForwarder(
+      forwarder.address,
+      true
+    );
     await ens.setSubnodeOwner(
       ZERO_HASH,
       nomLabel,
@@ -177,6 +187,9 @@ describe("Nom v2 Integration test", function () {
           },
         },
         {
+          [chainId]: baseRegistrarImplementation.address,
+        },
+        {
           [chainId]: nomRegistrarController.address,
         },
         {
@@ -201,15 +214,15 @@ describe("Nom v2 Integration test", function () {
     });
   });
 
-  const getTxDefaults = async () => {
-    const from = userAccount.address;
-    const nonce = await forwarder.getNonce(userAccount.address);
+  const getTxDefaults = async (from: string = userAccount.address) => {
+    const nonce = await forwarder.getNonce(from);
     const gas = 2e6;
     const value = 0;
     return { from, nonce, gas, value };
   };
 
   const getSignature = async (
+    account: Wallet,
     from: string,
     to: string,
     value: BigNumberish,
@@ -243,7 +256,7 @@ describe("Nom v2 Integration test", function () {
       chainId: anotherChainId,
       data,
     };
-    return await userAccount._signTypedData(domain, types, values);
+    return await account._signTypedData(domain, types, values);
   };
 
   const register = async (
@@ -262,7 +275,15 @@ describe("Nom v2 Integration test", function () {
     if (to == null || data == null) {
       throw new Error(`Tx fields are incomplete: ${to} ${data}`);
     }
-    const signature = await getSignature(from, to, value, gas, nonce, data);
+    const signature = await getSignature(
+      userAccount,
+      from,
+      to,
+      value,
+      gas,
+      nonce,
+      data
+    );
     await token.connect(userAccount).approve(userReservePortal.address, AMOUNT);
     await userReservePortal.escrow(
       token.address,
@@ -289,7 +310,15 @@ describe("Nom v2 Integration test", function () {
     if (to == null || data == null) {
       throw new Error(`Tx fields are incomplete: ${to} ${data}`);
     }
-    const signature = await getSignature(from, to, value, gas, nonce, data);
+    const signature = await getSignature(
+      userAccount,
+      from,
+      to,
+      value,
+      gas,
+      nonce,
+      data
+    );
     await userReservePortal.escrow(
       token.address,
       0,
@@ -317,7 +346,15 @@ describe("Nom v2 Integration test", function () {
     if (to == null || data == null) {
       throw new Error(`Tx fields are incomplete: ${to} ${data}`);
     }
-    const signature = await getSignature(from, to, value, gas, nonce, data);
+    const signature = await getSignature(
+      userAccount,
+      from,
+      to,
+      value,
+      gas,
+      nonce,
+      data
+    );
     await userReservePortal.escrow(
       token.address,
       0,
@@ -343,7 +380,83 @@ describe("Nom v2 Integration test", function () {
     if (to == null || data == null) {
       throw new Error(`Tx fields are incomplete: ${to} ${data}`);
     }
-    const signature = await getSignature(from, to, value, gas, nonce, data);
+    const signature = await getSignature(
+      userAccount,
+      from,
+      to,
+      value,
+      gas,
+      nonce,
+      data
+    );
+    await userReservePortal.escrow(
+      token.address,
+      0,
+      chainId,
+      {
+        from,
+        to,
+        gas,
+        value,
+        nonce,
+        chainId: anotherChainId,
+        data,
+      },
+      signature
+    );
+  };
+
+  const transferOwnership = async (tokenId: string, newOwner: string) => {
+    const { from, nonce, gas, value } = await getTxDefaults();
+    const { to, data } = await baseRegistrarImplementation.populateTransaction[
+      "safeTransferFrom(address,address,uint256)"
+    ](from, newOwner, tokenId);
+    if (to == null || data == null) {
+      throw new Error(`Tx fields are incomplete: ${to} ${data}`);
+    }
+    const signature = await getSignature(
+      userAccount,
+      from,
+      to,
+      value,
+      gas,
+      nonce,
+      data
+    );
+    await userReservePortal.escrow(
+      token.address,
+      0,
+      chainId,
+      {
+        from,
+        to,
+        gas,
+        value,
+        nonce,
+        chainId: anotherChainId,
+        data,
+      },
+      signature
+    );
+  };
+
+  const reclaim = async (tokenId: string, from: string) => {
+    const { nonce, gas, value } = await getTxDefaults(from);
+    const { to, data } = await baseRegistrarImplementation.populateTransaction[
+      "reclaim"
+    ](tokenId, from);
+    if (to == null || data == null) {
+      throw new Error(`Tx fields are incomplete: ${to} ${data}`);
+    }
+    const signature = await getSignature(
+      userAccount2,
+      from,
+      to,
+      value,
+      gas,
+      nonce,
+      data
+    );
     await userReservePortal.escrow(
       token.address,
       0,
@@ -440,6 +553,40 @@ describe("Nom v2 Integration test", function () {
       const { name } = await ensjs.getName(userAccount.address);
       expect(name).to.be.equal(NAME);
     });
+
+    it("should transfer ownership", async () => {
+      const tokenId = labelhash(NAME);
+      await transferOwnership(tokenId, userAccount2.address);
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(1);
+      await operator.finalizePendingCommitments(pendingCommitments);
+      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+
+      // userAccount2 is new owner, but userAccount still owns the record
+      const owner = await baseRegistrarImplementation.ownerOf(tokenId);
+      expect(owner).to.be.equal(userAccount2.address);
+      const recordOwner = await ensjs.name(`${NAME}.nom`).getOwner();
+      expect(recordOwner).to.be.equal(userAccount.address);
+    });
+
+    it("should reclaim", async () => {
+      const tokenId = labelhash(NAME);
+      await reclaim(tokenId, userAccount2.address);
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(1);
+      await operator.finalizePendingCommitments(pendingCommitments);
+      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+
+      // userAccount2 is new owner and userAccount2 owns the record
+      const owner = await baseRegistrarImplementation.ownerOf(tokenId);
+      expect(owner).to.be.equal(userAccount2.address);
+      const recordOwner = await ensjs.name(`${NAME}.nom`).getOwner();
+      expect(recordOwner).to.be.equal(userAccount2.address);
+    });
   });
 
   describe("normal run", () => {
@@ -502,6 +649,36 @@ describe("Nom v2 Integration test", function () {
 
       const { name } = await ensjs.getName(userAccount.address);
       expect(name).to.be.equal(NAME2);
+    });
+
+    it("should transfer ownership", async () => {
+      const tokenId = labelhash(NAME2);
+      await baseRegistrarImplementation
+        .connect(userAccount)
+        ["safeTransferFrom(address,address,uint256)"](
+          userAccount.address,
+          userAccount2.address,
+          tokenId
+        );
+
+      // userAccount2 is new owner, but userAccount still owns the record
+      const owner = await baseRegistrarImplementation.ownerOf(tokenId);
+      expect(owner).to.be.equal(userAccount2.address);
+      const recordOwner = await ensjs.name(`${NAME2}.nom`).getOwner();
+      expect(recordOwner).to.be.equal(userAccount.address);
+    });
+
+    it("should reclaim", async () => {
+      const tokenId = labelhash(NAME2);
+      await baseRegistrarImplementation
+        .connect(userAccount2)
+        .reclaim(tokenId, userAccount2.address);
+
+      // userAccount2 is new owner and userAccount2 owns the record
+      const owner = await baseRegistrarImplementation.ownerOf(tokenId);
+      expect(owner).to.be.equal(userAccount2.address);
+      const recordOwner = await ensjs.name(`${NAME}.nom`).getOwner();
+      expect(recordOwner).to.be.equal(userAccount2.address);
     });
 
     it("should batch register", async () => {

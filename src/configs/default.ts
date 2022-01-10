@@ -1,9 +1,8 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { BigNumber, providers, Signer, Wallet } from "ethers";
+import { Signer, Wallet } from "ethers";
 import { NomRegistrarController__factory } from "../../typechain/factories/NomRegistrarController__factory";
 import { Commitment } from "../types";
-import { formatUnits } from "ethers/lib/utils";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
 import { Config } from "../config";
 import { PublicResolver__factory } from "../../typechain/factories/PublicResolver__factory";
@@ -12,6 +11,7 @@ import { ReservePortal } from "../../typechain/ReservePortal";
 import { ReservePortal__factory } from "../../typechain/factories/ReservePortal__factory";
 import { OwnableMinimalForwarder } from "../../typechain/OwnableMinimalForwarder";
 import { OwnableMinimalForwarder__factory } from "../../typechain/factories/OwnableMinimalForwarder__factory";
+import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
 
 const { PRIVATE_KEY } = process.env;
 if (!PRIVATE_KEY) {
@@ -66,6 +66,10 @@ const RESOLVERS: Record<string, string> = {
   [44787]: "0x3c94b19597b2De1Cad7Ca2D214E859B454831455",
 };
 
+const BASE_REGISTRAR_IMPLEMENTATIONS: Record<string, string> = {
+  [44787]: "0x98725B0e93D761F9095690f688a964AA1F584870",
+};
+
 const NOM_REGISTRAR_CONTROLLERS: Record<string, string> = {
   [44787]: "0xf3C07ee51b08B47a152d1917924101a7c9eA2769",
 };
@@ -97,12 +101,18 @@ export const buildConfig = (
   signers = SIGNERS,
   numConfirmations = NUM_CONFIRMATIONS,
   acceptedCurrencies = ACCEPTED_CURRENCIES,
+  baseRegistrarImplementations = BASE_REGISTRAR_IMPLEMENTATIONS,
   nomRegistrarControllers = NOM_REGISTRAR_CONTROLLERS,
   reverseRegistrars = REVERSE_REGISTRARS,
   resolvers = RESOLVERS
 ) => {
   const config: Config = {};
   for (const chainId of chainIds) {
+    const baseRegistrarImplementation =
+      BaseRegistrarImplementation__factory.connect(
+        baseRegistrarImplementations[chainId],
+        signers[chainId]
+      );
     const nomRegistrarController = NomRegistrarController__factory.connect(
       nomRegistrarControllers[chainId],
       signers[chainId]
@@ -130,6 +140,15 @@ export const buildConfig = (
           case reverseRegistrar.address:
             switch (commitment.request.data.slice(0, 10)) {
               case reverseRegistrar.interface.getSighash("setName"):
+                return true;
+            }
+          case baseRegistrarImplementation.address:
+            switch (commitment.request.data.slice(0, 10)) {
+              case baseRegistrarImplementation.interface.getSighash(
+                "safeTransferFrom(address,address,uint256)"
+              ):
+                return true;
+              case baseRegistrarImplementation.interface.getSighash("reclaim"):
                 return true;
             }
           case nomRegistrarController.address:

@@ -45,6 +45,10 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(BaseRegistrarImplementation, ens.address, nomNode);
     const baseRegistrarImplementation =
       await BaseRegistrarImplementation.deployed();
+    await baseRegistrarImplementation.setTrustedForwarder(
+      forwarder.address,
+      true
+    );
     await ens.setSubnodeOwner(
       ZERO_HASH,
       nomLabel,
