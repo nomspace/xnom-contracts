@@ -136,19 +136,12 @@ export const buildConfig = (
             switch (commitment.request.data.slice(0, 10)) {
               case nomRegistrarController.interface.getSighash(
                 "registerWithConfig"
-              ):
-                const [name, owner, duration, resolver, addr] =
+              ): {
+                const [name, , duration, resolver, addr] =
                   nomRegistrarController.interface.decodeFunctionData(
                     "registerWithConfig",
                     commitment.request.data
                   );
-                // Disallow reserve abuse
-                if (owner === nomRegistrarController.address) {
-                  console.warn(
-                    `Commitment ${commitment.index} is using the operator to register`
-                  );
-                  return false;
-                }
                 const acceptedCurrency =
                   acceptedCurrencies[commitment.originChainId];
                 if (acceptedCurrency.address !== commitment.currency) {
@@ -158,13 +151,45 @@ export const buildConfig = (
                   return false;
                 }
                 const cost = (
-                  await nomRegistrarController.rentPrice(name, duration, owner)
+                  await nomRegistrarController.rentPrice(
+                    name,
+                    duration,
+                    commitment.owner
+                  )
                 )
                   .shr(18)
                   .shl(acceptedCurrency.decimals);
 
                 // `cost` is denominated in 18 decimals
                 return commitment.amount.gte(cost);
+              }
+              case nomRegistrarController.interface.getSighash("renew"): {
+                const [name, duration] =
+                  nomRegistrarController.interface.decodeFunctionData(
+                    "renew",
+                    commitment.request.data
+                  );
+                const acceptedCurrency =
+                  acceptedCurrencies[commitment.originChainId];
+                if (acceptedCurrency.address !== commitment.currency) {
+                  console.warn(
+                    `Commitment ${commitment.index} uses an incorrect currency to register`
+                  );
+                  return false;
+                }
+                const cost = (
+                  await nomRegistrarController.rentPrice(
+                    name,
+                    duration,
+                    commitment.owner
+                  )
+                )
+                  .shr(18)
+                  .shl(acceptedCurrency.decimals);
+
+                // `cost` is denominated in 18 decimals
+                return commitment.amount.gte(cost);
+              }
             }
         }
         return false;
