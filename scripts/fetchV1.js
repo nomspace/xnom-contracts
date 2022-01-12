@@ -2,6 +2,9 @@ require("dotenv").config;
 const Web3 = require("web3");
 const NomAbi = require("./abi/Nom.json");
 const MulticallAbi = require("./abi/Multicall.json");
+const {
+  abi: NomRegistrarControllerAbi,
+} = require("../build/contracts/NomRegistrarController.json");
 const { ethers } = require("ethers");
 const { normalize } = require("eth-ens-namehash");
 const fs = require("fs");
@@ -17,7 +20,7 @@ const getPastEvents = async (
   endBlock,
   filter
 ) => {
-  const filename = `/tmp/${contract.options.address}_${eventName}.txt`;
+  const filename = `/private/tmp/${contract.options.address}_${eventName}.txt`;
   const bucketSize = 100;
   let events = [];
   try {
@@ -31,7 +34,7 @@ const getPastEvents = async (
   ) {
     const fromBlock = Math.max(i * bucketSize, startBlock);
     const toBlock = Math.min((i + 1) * bucketSize, endBlock) - 1;
-    console.log(`Fetching events from ${fromBlock} to ${toBlock}`);
+    console.log(`Fetching ${eventName} events from ${fromBlock} to ${toBlock}`);
     events.push(
       ...(await contract.getPastEvents(eventName, {
         fromBlock,
@@ -131,6 +134,7 @@ const getExpirations = async (multicall, nom, reserveEvents) => {
 
 const getNomsToMigrate = async () => {
   const web3 = new Web3(process.env.CELO_RPC);
+  const alfajoresWeb3 = new Web3("https://alfajores-forno.celo-testnet.org");
   const nom = new web3.eth.Contract(
     NomAbi,
     "0xABf8faBbC071F320F222A526A2e1fBE26429344d"
@@ -139,8 +143,13 @@ const getNomsToMigrate = async () => {
     MulticallAbi,
     "0x75f59534dd892c1f8a7b172d639fa854d529ada3"
   );
+  const nomRegistrarController = new alfajoresWeb3.eth.Contract(
+    NomRegistrarControllerAbi,
+    "0x26AeE0de70C180f33190CD4f34C02C47C56b2665"
+  );
 
   const latestBlock = await web3.eth.getBlockNumber();
+  const latestTestBlock = await alfajoresWeb3.eth.getBlockNumber();
   const reserveEvents = await getPastEvents(
     nom,
     "NameOwnerChanged",
@@ -168,6 +177,20 @@ const getNomsToMigrate = async () => {
     getExpirations(multicall, nom, reserveEvents),
   ]);
 
+  const migrated = await getPastEvents(
+    nomRegistrarController,
+    "NameRegistered",
+    9295884,
+    latestTestBlock
+  ).then((events) =>
+    events
+      .map((event) => event.returnValues.name)
+      .reduce((acc, name) => {
+        acc[name] = true;
+        return acc;
+      }, {})
+  );
+
   const toMigrate = [];
   const seen = {};
   for (let i = 0; i < reserveEvents.length; i++) {
@@ -177,7 +200,7 @@ const getNomsToMigrate = async () => {
     }
     try {
       name = normalize(name);
-      if (!seen[name]) {
+      if (!seen[name] && !migrated[name]) {
         toMigrate.push({
           index: i,
           name,
@@ -191,6 +214,7 @@ const getNomsToMigrate = async () => {
       console.warn(`Can't normalize ${name}`);
     }
   }
+
   return toMigrate;
 };
 

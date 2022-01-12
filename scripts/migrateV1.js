@@ -5,7 +5,7 @@ const PublicResolver = artifacts.require("PublicResolver");
 
 const BUFFER = 60 * 60 * 24 * 7; // 1 week gift
 const BUCKET_SIZE = 20;
-const START = 31000;
+const START = 0;
 
 module.exports = async (t) => {
   const nomRegistrarController = await NomRegistrarController.deployed();
