@@ -36,15 +36,15 @@ export const SIGNERS: Record<string, Signer> = {
 
 export const PORTALS: Record<string, ReservePortal> = {
   [44787]: ReservePortal__factory.connect(
-    "0xcE6863Bac168f47EF41404378Ce838ae14aAFAC8",
+    "0x032307BFAa0BB0C787E5544425c74cBcBd0d0438",
     SIGNERS[44787]
   ),
   [43113]: ReservePortal__factory.connect(
-    "0xfB1243D603b21D9E1a9669b67998c5CF12F58c1B",
+    "0x4F4dac4180dAC08dc0AF38aE8f439C3A58F296A7",
     SIGNERS[43113]
   ),
   [80001]: ReservePortal__factory.connect(
-    "0xb83e6f8BC9553Dd7AaECA86E96fa9B113563dfa3",
+    "0xF545610f2eD7dBAE5c793F23684A38877A953aD1",
     SIGNERS[80001]
   ),
 };
