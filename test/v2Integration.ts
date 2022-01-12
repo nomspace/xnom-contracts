@@ -336,39 +336,51 @@ describe("Nom v2 Integration test", function () {
     );
   };
 
-  const setText = async (namehash: string, key: string, val: string) => {
+  const setTexts = async (namehash: string, keys: string[], vals: string[]) => {
     const { from, nonce, gas, value } = await getTxDefaults();
-    const { to, data } = await resolver.populateTransaction["setText"](
-      namehash,
-      key,
-      val
-    );
-    if (to == null || data == null) {
-      throw new Error(`Tx fields are incomplete: ${to} ${data}`);
-    }
-    const signature = await getSignature(
-      userAccount,
-      from,
-      to,
-      value,
-      gas,
-      nonce,
-      data
-    );
-    await userReservePortal.escrow(
-      token.address,
-      0,
-      chainId,
-      {
+    const currencies = [];
+    const amounts = [];
+    const chainIds = [];
+    const requests = [];
+    const signatures = [];
+    for (let i = 0; i < keys.length; i++) {
+      const { to, data } = await resolver.populateTransaction["setText"](
+        namehash,
+        keys[i],
+        vals[i]
+      );
+      if (to == null || data == null) {
+        throw new Error(`Tx fields are incomplete: ${to} ${data}`);
+      }
+      const signature = await getSignature(
+        userAccount,
+        from,
+        to,
+        value,
+        gas,
+        nonce.add(i),
+        data
+      );
+      currencies.push(token.address);
+      amounts.push(0);
+      chainIds.push(chainId);
+      requests.push({
         from,
         to,
         gas,
         value,
-        nonce,
+        nonce: nonce.add(i),
         chainId: anotherChainId,
         data,
-      },
-      signature
+      });
+      signatures.push(signature);
+    }
+    await userReservePortal.batchEscrow(
+      currencies,
+      amounts,
+      chainIds,
+      requests,
+      signatures
     );
   };
 
@@ -525,9 +537,9 @@ describe("Nom v2 Integration test", function () {
 
     it("should setText", async () => {
       // Set text
-      const KEY = "com.github";
-      const VALUE = "https://github.com/nomspace";
-      await setText(NAMEHASH_WITH_TLD, KEY, VALUE);
+      const KEYS = ["com.github"];
+      const VALUES = ["https://github.com/nomspace"];
+      await setTexts(NAMEHASH_WITH_TLD, KEYS, VALUES);
       let pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(1);
       await operator.finalizePendingCommitments(pendingCommitments);
@@ -536,7 +548,32 @@ describe("Nom v2 Integration test", function () {
       expect(pendingCommitments.length).to.be.equal(0);
 
       // Address should be properly set
-      expect(await resolver.text(NAMEHASH_WITH_TLD, KEY)).to.be.equal(VALUE);
+      for (let i = 0; i < KEYS.length; i++) {
+        expect(await resolver.text(NAMEHASH_WITH_TLD, KEYS[i])).to.be.equal(
+          VALUES[i]
+        );
+      }
+    });
+
+    it("should batch setText", async () => {
+      // Set text
+      const KEYS = ["com.github", "url"];
+      const VALUES = ["https://github.com/nomspace2", "someurl"];
+      await setTexts(NAMEHASH_WITH_TLD, KEYS, VALUES);
+      let pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(2);
+      await operator.finalizePendingCommitments(pendingCommitments);
+      expect((await userReservePortal.commitments(2)).committed).to.be.true;
+      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      pendingCommitments = await operator.fetchPendingCommitments();
+      expect(pendingCommitments.length).to.be.equal(0);
+
+      // Address should be properly set
+      for (let i = 0; i < KEYS.length; i++) {
+        expect(await resolver.text(NAMEHASH_WITH_TLD, KEYS[i])).to.be.equal(
+          VALUES[i]
+        );
+      }
     });
 
     it("should reverse register", async () => {
@@ -545,7 +582,7 @@ describe("Nom v2 Integration test", function () {
       let pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(1);
       await operator.finalizePendingCommitments(pendingCommitments);
-      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      expect((await userReservePortal.commitments(4)).committed).to.be.true;
       pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(0);
 
@@ -560,7 +597,7 @@ describe("Nom v2 Integration test", function () {
       let pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(1);
       await operator.finalizePendingCommitments(pendingCommitments);
-      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      expect((await userReservePortal.commitments(5)).committed).to.be.true;
       pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(0);
 
@@ -577,7 +614,7 @@ describe("Nom v2 Integration test", function () {
       let pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(1);
       await operator.finalizePendingCommitments(pendingCommitments);
-      expect((await userReservePortal.commitments(3)).committed).to.be.true;
+      expect((await userReservePortal.commitments(6)).committed).to.be.true;
       pendingCommitments = await operator.fetchPendingCommitments();
       expect(pendingCommitments.length).to.be.equal(0);
 

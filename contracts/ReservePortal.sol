@@ -70,6 +70,32 @@ contract ReservePortal is Ownable {
 
   // == Public write functions ==
 
+  function batchEscrow(
+    IERC20[] memory _currencies,
+    uint256[] memory _amounts,
+    uint256[] memory _chainIds,
+    Request[] calldata _requests,
+    bytes[] calldata _signatures
+  ) external {
+    uint256 currentTime = block.timestamp;
+    for (uint256 i = 0; i < _currencies.length; i++) {
+      _currencies[i].safeTransferFrom(msg.sender, address(this), _amounts[i]);
+      commitments[nextCommitmentIndex] = Commitment(
+        nextCommitmentIndex,
+        msg.sender,
+        _currencies[i],
+        _amounts[i],
+        currentTime,
+        _chainIds[i],
+        _requests[i],
+        _signatures[i],
+        false,
+        false
+      );
+      emit Escrowed(nextCommitmentIndex++, currentTime);
+    }
+  }
+
   function escrow(
     IERC20 _currency,
     uint256 _amount,
