@@ -1,15 +1,24 @@
-# Basic Sample Hardhat Project
+# Official Cross-chain Nom contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+## Design
+Every chain will have a ReservePortal contract that accepts meta-transactions from users. These meta-transactions are watched by a cron-job that checks the meta-tx validitiy and executes them on the target chain. This design allows users to reserve and manage their .nom from any chain.
 
-Try running some of the following tasks:
+## Usage
+This project is a hybrid Hardhat / Truffle project. In the future, we should just use Hardhat for everything, but for now the devs have decided to be weird.
+### Installation
+```
+yarn
+```
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
+### Usage
+```
+yarn hardhat compile
+# or
+yarn truffle compile
+
+yarn truffle migrate --network <network>
+
+yarn truffle test
+# or
+yarn hardhat test
 ```
