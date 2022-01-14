@@ -13,6 +13,7 @@ const CREATION_BLOCK = 7240250;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const BUCKET_SIZE = 200;
 
+const now = Math.floor(Date.now() / 1000);
 const getPastEvents = async (
   contract,
   eventName,
@@ -143,9 +144,9 @@ const getNomsToMigrate = async () => {
     MulticallAbi,
     "0x75f59534dd892c1f8a7b172d639fa854d529ada3"
   );
-  const nomRegistrarController = new alfajoresWeb3.eth.Contract(
+  const nomRegistrarController = new web3.eth.Contract( // edit if doing alfajores
     NomRegistrarControllerAbi,
-    "0x26AeE0de70C180f33190CD4f34C02C47C56b2665"
+    "0x046D19c5E5E8938D54FB02DCC396ACf7F275490A"
   );
 
   const latestBlock = await web3.eth.getBlockNumber();
@@ -180,8 +181,9 @@ const getNomsToMigrate = async () => {
   const migrated = await getPastEvents(
     nomRegistrarController,
     "NameRegistered",
-    9295884,
-    latestTestBlock
+    10909889,
+    latestBlock
+    // latestTestBlock
   ).then((events) =>
     events
       .map((event) => event.returnValues.name)
@@ -200,7 +202,7 @@ const getNomsToMigrate = async () => {
     }
     try {
       name = normalize(name);
-      if (!seen[name] && !migrated[name]) {
+      if (!seen[name] && !migrated[name] && expirations[i] > now) {
         toMigrate.push({
           index: i,
           name,
