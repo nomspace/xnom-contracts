@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC721Enumerable.sol";
 
-abstract contract L is IERC721Enumerable {}
-
 // NOTE: Name == Nom in the documentation and is used interchangeably
 interface INom {
   // @dev Reserve a Nom for a duration of time
