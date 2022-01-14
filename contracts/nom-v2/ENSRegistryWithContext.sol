@@ -6,7 +6,7 @@ import "../metatx/RelayRecipient.sol";
 /**
  * The ENS registry contract.
  */
-contract ENSRegistry is RelayRecipient, ENS {
+contract ENSRegistryWithContext is RelayRecipient, ENS {
   struct Record {
     address owner;
     address resolver;

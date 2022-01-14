@@ -4,8 +4,8 @@ import { ReservePortal } from "../typechain/ReservePortal";
 import { ReservePortal__factory } from "../typechain/factories/ReservePortal__factory";
 import { OwnableMinimalForwarder } from "../typechain/OwnableMinimalForwarder";
 import { OwnableMinimalForwarder__factory } from "../typechain/factories/OwnableMinimalForwarder__factory";
-import { ENSRegistry } from "../typechain/ENSRegistry";
-import { ENSRegistry__factory } from "../typechain/factories/ENSRegistry__factory";
+import { ENSRegistryWithContext } from "../typechain/ENSRegistryWithContext";
+import { ENSRegistryWithContext__factory } from "../typechain/factories/ENSRegistryWithContext__factory";
 import { PublicResolver } from "../typechain/PublicResolver";
 import { PublicResolver__factory } from "../typechain/factories/PublicResolver__factory";
 import { BaseRegistrarImplementation } from "../typechain/BaseRegistrarImplementation";
@@ -57,7 +57,7 @@ describe("Nom v2 Integration test", function () {
   let forwarder: OwnableMinimalForwarder;
   let operatorReservePortal: ReservePortal;
   let token: MockERC20;
-  let ens: ENSRegistry;
+  let ens: ENSRegistryWithContext;
   let resolver: PublicResolver;
   let baseRegistrarImplementation: BaseRegistrarImplementation;
   let nomRegistrarController: NomRegistrarController;
@@ -107,7 +107,7 @@ describe("Nom v2 Integration test", function () {
     await token.deployed();
 
     // Deploy ENS
-    ens = await new ENSRegistry__factory().connect(ownerAccount).deploy();
+    ens = await new ENSRegistryWithContext__factory().connect(ownerAccount).deploy();
     await ens.deployed();
     resolver = await new PublicResolver__factory()
       .connect(ownerAccount)

@@ -1,4 +1,4 @@
-const ENSRegistry = artifacts.require("ENSRegistry");
+const ENSRegistryWithContext = artifacts.require("ENSRegistryWithContext");
 const PublicResolver = artifacts.require("PublicResolver");
 const BaseRegistrarImplementation = artifacts.require(
   "BaseRegistrarImplementation"
@@ -24,8 +24,8 @@ module.exports = async function (deployer, network, accounts) {
   if (isCelo) {
     const forwarder = await OwnableMinimalForwarder.deployed();
     // Deploy ens
-    await deployer.deploy(ENSRegistry);
-    const ens = await ENSRegistry.deployed();
+    await deployer.deploy(ENSRegistryWithContext);
+    const ens = await ENSRegistryWithContext.deployed();
 
     // Deploy resolver
     await deployer.deploy(PublicResolver, ens.address, ZERO_ADDRESS);
