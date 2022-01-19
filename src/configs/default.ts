@@ -22,10 +22,16 @@ const fallbackPrivateKey =
 
 const MAINNET: Record<string, boolean> = {
   [42220]: true,
+  [43114]: true,
+  [250]: true,
+  [137]: true,
 };
 
 export const PROVIDERS = {
   [42220]: new CeloProvider("https://forno.celo.org"),
+  [43114]: new JsonRpcProvider("https://api.avax.network/ext/bc/C/rpc"),
+  [250]: new JsonRpcProvider("https://rpc.ftm.tools"),
+  [137]: new JsonRpcProvider(process.env.POLYGON_RPC),
 
   [44787]: new CeloProvider("https://alfajores-forno.celo-testnet.org"),
   [43113]: new JsonRpcProvider("https://api.avax-test.network/ext/bc/C/rpc"),
@@ -36,6 +42,9 @@ export const PROVIDERS = {
 
 export const SIGNERS: Record<string, Signer> = {
   [42220]: new CeloWallet(PRIVATE_KEY || fallbackPrivateKey, PROVIDERS[42220]),
+  [43114]: new Wallet(PRIVATE_KEY || fallbackPrivateKey, PROVIDERS[43114]),
+  [250]: new Wallet(PRIVATE_KEY || fallbackPrivateKey, PROVIDERS[250]),
+  [137]: new Wallet(PRIVATE_KEY || fallbackPrivateKey, PROVIDERS[137]),
 
   [44787]: new CeloWallet(PRIVATE_KEY || fallbackPrivateKey, PROVIDERS[44787]),
   [43113]: new Wallet(PRIVATE_KEY || fallbackPrivateKey, PROVIDERS[43113]),
@@ -46,6 +55,18 @@ export const PORTALS: Record<string, ReservePortal> = {
   [42220]: ReservePortal__factory.connect(
     "0x4f8A658a993347C25f17De54c192C5E6CE8D51cf",
     SIGNERS[42220]
+  ),
+  [43114]: ReservePortal__factory.connect(
+    "0xC3604Ae1EAeC5Ef06CBf8AF6D3aB060C488453A3",
+    SIGNERS[43114]
+  ),
+  [250]: ReservePortal__factory.connect(
+    "0xC3604Ae1EAeC5Ef06CBf8AF6D3aB060C488453A3",
+    SIGNERS[250]
+  ),
+  [137]: ReservePortal__factory.connect(
+    "0x1a81A68Fc79aE5821211859e8b01cDD5A24Beab8",
+    SIGNERS[137]
   ),
 
   [44787]: ReservePortal__factory.connect(
@@ -75,7 +96,10 @@ export const FORWARDERS: Record<string, OwnableMinimalForwarder> = {
 };
 
 const NUM_CONFIRMATIONS: Record<string, number> = {
-  [42220]: 2,
+  [42220]: 1,
+  [43114]: 1,
+  [250]: 1,
+  [137]: 1,
 
   [44787]: 3,
   [43113]: 3,
@@ -109,6 +133,18 @@ const ACCEPTED_CURRENCIES: Record<
   [42220]: {
     address: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
     decimals: 18,
+  },
+  [43114]: {
+    address: "0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664",
+    decimals: 6,
+  },
+  [250]: {
+    address: "0x04068da6c83afcfa0e13ba15a6696662335d5b75",
+    decimals: 6,
+  },
+  [137]: {
+    address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+    decimals: 6,
   },
 
   [44787]: {

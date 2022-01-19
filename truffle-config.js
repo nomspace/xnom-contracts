@@ -38,7 +38,7 @@ module.exports = {
           privateKeys: [process.env.PRIVATE_KEY],
           providerOrUrl: `https://api.avax.network/ext/bc/C/rpc`,
         }),
-      network_id: 1,
+      network_id: 43114,
       gas: 6000000,
       gasPrice: toWei("30", "gwei"),
     },
@@ -80,7 +80,7 @@ module.exports = {
         }),
       network_id: 250,
       gas: 6000000,
-      gasPrice: toWei("100", "gwei"),
+      gasPrice: toWei("500", "gwei"),
     },
     fantomtest: {
       provider: () =>
@@ -100,7 +100,7 @@ module.exports = {
         }),
       network_id: 137,
       gas: 6000000,
-      gasPrice: toWei("60", "gwei"),
+      gasPrice: toWei("300", "gwei"),
     },
     mumbai: {
       provider: () =>

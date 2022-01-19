@@ -11,7 +11,8 @@ const signers = SIGNERS;
 const portals = PORTALS;
 const forwarders = FORWARDERS;
 
-const config = buildConfig([44787]);
+// const config = buildConfig([44787]);
+const config = buildConfig([42220]);
 
 const operator = new Operator(signers, portals, forwarders, config);
 

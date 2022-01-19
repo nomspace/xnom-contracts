@@ -11,7 +11,7 @@ const {
 const Web3 = require("web3");
 
 const BUFFER = 60 * 60 * 24 * 7; // 1 week gift
-const BUCKET_SIZE = 40;
+const BUCKET_SIZE = 5;
 const START = 0;
 const now = Math.floor(Date.now() / 1000);
 

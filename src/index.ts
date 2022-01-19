@@ -1,13 +1,42 @@
-import { Signer } from "ethers";
+import { BaseContract, Contract, Signer } from "ethers";
 import { Config, defaultConfig } from "./config";
-import { ReservePortal } from "../typechain/ReservePortal";
-import { TypedEvent } from "../typechain/common";
+import {
+  ReservePortal,
+  EscrowedEvent,
+  CommittedEvent,
+  VoidedEvent,
+} from "../typechain/ReservePortal";
+import { TypedEvent, TypedEventFilter } from "../typechain/common";
 import { Commitment } from "./types";
 import { OwnableMinimalForwarder } from "../typechain/OwnableMinimalForwarder";
 
 type Signers = Record<string, Signer>;
 type Portals = Record<string, ReservePortal>;
 type Forwarders = Record<string, OwnableMinimalForwarder>;
+
+const LAST_N_BLOCKS = 50_000; // Only fetch the last N blocks
+const BUCKET_SIZE = 3500;
+
+const getPastEvents = async <TEvent extends TypedEvent>(
+  contract: any,
+  filter: TypedEventFilter<TEvent>,
+  fromBlock: number,
+  toBlock: number
+): Promise<Array<TEvent>> => {
+  let start = fromBlock;
+  const events = [];
+  while (start < toBlock) {
+    events.push(
+      ...(await contract.queryFilter(
+        filter,
+        start,
+        Math.min(start + BUCKET_SIZE - 1, toBlock)
+      ))
+    );
+    start += BUCKET_SIZE;
+  }
+  return events;
+};
 
 export class Operator {
   signers: Signers;
@@ -39,23 +68,33 @@ export class Operator {
     const allPendingCommitments: Commitment[] = [];
     for (const [chainId, reservePortal] of Object.entries(this.portals)) {
       const now = Math.floor(Date.now() / 1000);
-      const eventOptions = [0, "latest"];
+      const latestBlock = await reservePortal.provider.getBlockNumber();
+      const fromBlock = latestBlock - LAST_N_BLOCKS;
+      const toBlock = latestBlock;
       const [
         allCommitments,
         commitedCommitments,
         voidedCommitments,
         voidDelay,
       ] = await Promise.all([
-        reservePortal.queryFilter(
+        getPastEvents<EscrowedEvent>(
+          reservePortal,
           reservePortal.filters.Escrowed(null, null),
-          ...eventOptions
+          fromBlock,
+          toBlock
         ),
-        reservePortal
-          .queryFilter(reservePortal.filters.Committed(null), ...eventOptions)
-          .then(eventsToSet),
-        reservePortal
-          .queryFilter(reservePortal.filters.Voided(null), ...eventOptions)
-          .then(eventsToSet),
+        getPastEvents<CommittedEvent>(
+          reservePortal,
+          reservePortal.filters.Committed(null),
+          fromBlock,
+          toBlock
+        ),
+        getPastEvents<VoidedEvent>(
+          reservePortal,
+          reservePortal.filters.Voided(null),
+          fromBlock,
+          toBlock
+        ),
         reservePortal.voidDelay(),
       ]);
       const pendingCommitments = await Promise.all(
@@ -63,8 +102,8 @@ export class Operator {
           .filter((event) => {
             const { index, timestamp } = event.args;
             return (
-              !commitedCommitments[index.toString()] &&
-              !voidedCommitments[index.toString()] &&
+              !commitedCommitments[index.toNumber()] &&
+              !voidedCommitments[index.toNumber()] &&
               timestamp.add(voidDelay).gt(now)
             );
           })
