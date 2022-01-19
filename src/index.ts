@@ -22,12 +22,12 @@ const getPastEvents = async <TEvent extends TypedEvent>(
   contract: any,
   filter: TypedEventFilter<TEvent>,
   fromBlock: number,
-  toBlock: number
+  toBlock: number,
+  chainId: string | number
 ): Promise<Array<TEvent>> => {
-  const chainId = await contract.provider.getNetwork().then((n: any) => n.chainId);
   const filename = `/private/tmp/${chainId}_${
     contract.address
-  }_${JSON.stringify(filter.topics)}.txt`;
+  }_${filter.topics?.join("_")}.txt`;
   let events = [];
   let start = fromBlock;
   try {
@@ -92,19 +92,22 @@ export class Operator {
           reservePortal,
           reservePortal.filters.Escrowed(null, null),
           fromBlock,
-          toBlock
+          toBlock,
+          chainId
         ),
         getPastEvents<CommittedEvent>(
           reservePortal,
           reservePortal.filters.Committed(null),
           fromBlock,
-          toBlock
+          toBlock,
+          chainId
         ),
         getPastEvents<VoidedEvent>(
           reservePortal,
           reservePortal.filters.Voided(null),
           fromBlock,
-          toBlock
+          toBlock,
+          chainId
         ),
         reservePortal.voidDelay(),
       ]);
