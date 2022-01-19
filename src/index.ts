@@ -1,4 +1,4 @@
-import { BaseContract, Contract, Signer } from "ethers";
+import { BaseContract, BigNumber, Contract, Signer } from "ethers";
 import { Config, defaultConfig } from "./config";
 import {
   ReservePortal,
@@ -26,7 +26,7 @@ const getPastEvents = async <TEvent extends TypedEvent>(
   chainId: string | number
 ): Promise<Array<TEvent>> => {
   const filterStr = filter.topics?.join("_");
-  const baseFilename = `/private/tmp/${chainId}_${contract.address}_${filterStr}`;
+  const baseFilename = `/tmp/${chainId}_${contract.address}_${filterStr}`;
   const eventsFilename = `${baseFilename}_events.txt`;
   const lastBlockFilename = `${baseFilename}_lastBlock.txt`;
   let events = [];
@@ -36,7 +36,7 @@ const getPastEvents = async <TEvent extends TypedEvent>(
   } catch (e) {}
   try {
     events = JSON.parse(fs.readFileSync(eventsFilename).toString()).filter(
-      (e: any) => e.blockNumber >= start
+      (e: any) => e.blockNumber >= fromBlock
     );
   } catch (e) {}
 
@@ -115,7 +115,7 @@ export class Operator {
       const pendingCommitments = await Promise.all(
         allCommitments
           .filter((event) => {
-            const { index, timestamp } = event.args;
+            const [index, timestamp] = event.args.map((v) => BigNumber.from(v));
             return (
               !commitedCommitments[index.toNumber()] &&
               !voidedCommitments[index.toNumber()] &&
@@ -124,7 +124,7 @@ export class Operator {
           })
           .map((event) => {
             // TODO: Multicall
-            const { index } = event.args;
+            const [index] = event.args;
             return reservePortal
               .commitments(index)
               .then((pendingCommitment) => ({

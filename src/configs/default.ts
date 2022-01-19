@@ -1,6 +1,6 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { Signer, Wallet } from "ethers";
+import { BigNumberish, Signer, Wallet } from "ethers";
 import { NomRegistrarController__factory } from "../../typechain/factories/NomRegistrarController__factory";
 import { Commitment } from "../types";
 import { CeloProvider, CeloWallet } from "@celo-tools/celo-ethers-wrapper";
@@ -12,6 +12,7 @@ import { ReservePortal__factory } from "../../typechain/factories/ReservePortal_
 import { OwnableMinimalForwarder } from "../../typechain/OwnableMinimalForwarder";
 import { OwnableMinimalForwarder__factory } from "../../typechain/factories/OwnableMinimalForwarder__factory";
 import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
+import { formatUnits, parseUnits } from "ethers/lib/utils";
 
 const { PRIVATE_KEY } = process.env;
 if (!PRIVATE_KEY) {
@@ -135,15 +136,15 @@ const ACCEPTED_CURRENCIES: Record<
     decimals: 18,
   },
   [43114]: {
-    address: "0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664",
+    address: "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
     decimals: 6,
   },
   [250]: {
-    address: "0x04068da6c83afcfa0e13ba15a6696662335d5b75",
+    address: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75",
     decimals: 6,
   },
   [137]: {
-    address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+    address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
     decimals: 6,
   },
 
@@ -233,22 +234,22 @@ export const buildConfig = (
                     commitment.request.data
                   );
                 const acceptedCurrency =
-                  acceptedCurrencies[commitment.originChainId];
+                  acceptedCurrencies[commitment.originChainId.toString()];
                 if (acceptedCurrency.address !== commitment.currency) {
                   console.warn(
                     `Commitment ${commitment.index} uses an incorrect currency to register`
                   );
                   return false;
                 }
-                const cost = (
+                const cost = shiftDecimals(
                   await nomRegistrarController.rentPrice(
                     name,
                     duration,
                     commitment.owner
-                  )
-                )
-                  .shr(18)
-                  .shl(acceptedCurrency.decimals);
+                  ),
+                  18,
+                  acceptedCurrency.decimals
+                );
 
                 // `cost` is denominated in 18 decimals
                 return commitment.amount.gte(cost);
@@ -267,15 +268,15 @@ export const buildConfig = (
                   );
                   return false;
                 }
-                const cost = (
+                const cost = shiftDecimals(
                   await nomRegistrarController.rentPrice(
                     name,
                     duration,
                     commitment.owner
-                  )
-                )
-                  .shr(18)
-                  .shl(acceptedCurrency.decimals);
+                  ),
+                  18,
+                  acceptedCurrency.decimals
+                );
 
                 // `cost` is denominated in 18 decimals
                 return commitment.amount.gte(cost);
@@ -287,4 +288,15 @@ export const buildConfig = (
     };
   }
   return config;
+};
+
+const shiftDecimals = (
+  num: BigNumberish,
+  leftShift: number,
+  rightShift: number
+) => {
+  const left = Number(formatUnits(num.toString(), leftShift)).toFixed(
+    rightShift
+  );
+  return parseUnits(left, rightShift);
 };

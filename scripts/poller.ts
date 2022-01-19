@@ -22,10 +22,10 @@ const main = async () => {
   while (true) {
     try {
       const pendingCommitments = await operator.fetchPendingCommitments();
+      console.log(
+        `Number of pending commitments: ${pendingCommitments.length}`
+      );
       if (pendingCommitments.length > 0) {
-        console.log(
-          `Number of pending commitments: ${pendingCommitments.length}`
-        );
         await operator.finalizePendingCommitments(pendingCommitments);
       }
     } catch (e) {
