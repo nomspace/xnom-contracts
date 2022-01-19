@@ -9,6 +9,7 @@ import {
 import { TypedEvent, TypedEventFilter } from "../typechain/common";
 import { Commitment } from "./types";
 import { OwnableMinimalForwarder } from "../typechain/OwnableMinimalForwarder";
+import fs from "fs";
 
 type Signers = Record<string, Signer>;
 type Portals = Record<string, ReservePortal>;
@@ -23,8 +24,17 @@ const getPastEvents = async <TEvent extends TypedEvent>(
   fromBlock: number,
   toBlock: number
 ): Promise<Array<TEvent>> => {
+  const chainId = await contract.provider.getNetwork().then((n: any) => n.chainId);
+  const filename = `/private/tmp/${chainId}_${
+    contract.address
+  }_${JSON.stringify(filter.topics)}.txt`;
+  let events = [];
   let start = fromBlock;
-  const events = [];
+  try {
+    events = JSON.parse(fs.readFileSync(filename).toString());
+    start = Math.max(fromBlock, events[events.length - 1].blockNumber + 1);
+  } catch (e) {}
+
   while (start < toBlock) {
     events.push(
       ...(await contract.queryFilter(
@@ -33,6 +43,7 @@ const getPastEvents = async <TEvent extends TypedEvent>(
         Math.min(start + BUCKET_SIZE - 1, toBlock)
       ))
     );
+    fs.writeFileSync(filename, JSON.stringify(events));
     start += BUCKET_SIZE;
   }
   return events;
