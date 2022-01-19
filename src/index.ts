@@ -25,25 +25,26 @@ const getPastEvents = async <TEvent extends TypedEvent>(
   toBlock: number,
   chainId: string | number
 ): Promise<Array<TEvent>> => {
-  const filename = `/private/tmp/${chainId}_${
-    contract.address
-  }_${filter.topics?.join("_")}.txt`;
+  const filterStr = filter.topics?.join("_");
+  const baseFilename = `/private/tmp/${chainId}_${contract.address}_${filterStr}`;
+  const eventsFilename = `${baseFilename}_events.txt`;
+  const lastBlockFilename = `${baseFilename}_lastBlock.txt`;
   let events = [];
   let start = fromBlock;
   try {
-    events = JSON.parse(fs.readFileSync(filename).toString());
-    start = Math.max(fromBlock, events[events.length - 1].blockNumber + 1);
+    start = Math.max(start, Number(fs.readFileSync(lastBlockFilename)) + 1);
+  } catch (e) {}
+  try {
+    events = JSON.parse(fs.readFileSync(eventsFilename).toString()).filter(
+      (e: any) => e.blockNumber >= start
+    );
   } catch (e) {}
 
   while (start < toBlock) {
-    events.push(
-      ...(await contract.queryFilter(
-        filter,
-        start,
-        Math.min(start + BUCKET_SIZE - 1, toBlock)
-      ))
-    );
-    fs.writeFileSync(filename, JSON.stringify(events));
+    const end = Math.min(start + BUCKET_SIZE - 1, toBlock);
+    events.push(...(await contract.queryFilter(filter, start, end)));
+    fs.writeFileSync(eventsFilename, JSON.stringify(events));
+    fs.writeFileSync(lastBlockFilename, end.toString());
     start += BUCKET_SIZE;
   }
   return events;

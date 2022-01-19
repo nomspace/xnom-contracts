@@ -10,6 +10,7 @@ import {
 const signers = SIGNERS;
 const portals = PORTALS;
 const forwarders = FORWARDERS;
+const POLL_DELAY = 10000;
 
 // const config = buildConfig([44787]);
 const config = buildConfig([42220]);
@@ -30,7 +31,7 @@ const main = async () => {
     } catch (e) {
       console.error(e);
     }
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, POLL_DELAY));
   }
 };
 
