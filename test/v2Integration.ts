@@ -22,6 +22,7 @@ import { buildConfig } from "../src/configs/default";
 import namehash from "eth-ens-namehash";
 import ENS from "@ensdomains/ensjs";
 import { BigNumberish, utils, Wallet } from "ethers";
+import fs from "fs";
 
 const labelhash = (label: string) => utils.keccak256(utils.toUtf8Bytes(label));
 
@@ -44,6 +45,10 @@ const takeSnapshot = async () => {
 
 const revertSnapshot = async (snapshotId: number) => {
   await ethers.provider.send("evm_revert", [snapshotId]);
+};
+
+const mineBlock = async () => {
+  await ethers.provider.send("evm_mine", []);
 };
 
 describe("Nom v2 Integration test", function () {
@@ -90,6 +95,20 @@ describe("Nom v2 Integration test", function () {
       operatorAccount.address
     );
     await reservePortal.deployed();
+    const basePath = `/tmp/${chainId}_${reservePortal.address}`;
+    const topics = [
+      "0x023ad9f3cfd45bbf91919354cab651602c11b3d4267df2f095331f1e31c0c429",
+      "0x2e5fd7be03546a23e6d8b061de2bbf82f42e6940f38eab48de2846e96fb5fc12",
+      "0xa0add9b3f251e0c65ca063f300e2f04bc423f4b29b11f0149bd33d75f0160172",
+    ];
+    for (const topic of topics) {
+      try {
+        fs.unlinkSync(`${basePath}_${topic}_events.txt`);
+      } catch (e) {}
+      try {
+        fs.unlinkSync(`${basePath}_${topic}_lastBlock.txt`);
+      } catch (e) {}
+    }
     userReservePortal = ReservePortal.attach(reservePortal.address).connect(
       userAccount
     );
@@ -107,7 +126,9 @@ describe("Nom v2 Integration test", function () {
     await token.deployed();
 
     // Deploy ENS
-    ens = await new ENSRegistryWithContext__factory().connect(ownerAccount).deploy();
+    ens = await new ENSRegistryWithContext__factory()
+      .connect(ownerAccount)
+      .deploy();
     await ens.deployed();
     resolver = await new PublicResolver__factory()
       .connect(ownerAccount)
@@ -205,6 +226,10 @@ describe("Nom v2 Integration test", function () {
       provider: ownerAccount.provider,
       ensAddress: ens.address,
     });
+  });
+
+  afterEach(async () => {
+    await mineBlock();
   });
 
   describe("empty run", () => {

@@ -32,12 +32,10 @@ const getPastEvents = async <TEvent extends TypedEvent>(
   let events = [];
   let start = fromBlock;
   try {
-    start = Math.max(start, Number(fs.readFileSync(lastBlockFilename)) + 1);
+    events = JSON.parse(fs.readFileSync(eventsFilename).toString());
   } catch (e) {}
   try {
-    events = JSON.parse(fs.readFileSync(eventsFilename).toString()).filter(
-      (e: any) => e.blockNumber >= fromBlock
-    );
+    start = Math.max(start, Number(fs.readFileSync(lastBlockFilename)) + 1);
   } catch (e) {}
 
   while (start < toBlock) {
@@ -72,8 +70,8 @@ export class Operator {
   async fetchPendingCommitments(): Promise<Commitment[]> {
     const eventsToSet = (events: TypedEvent[]) =>
       events.reduce<Record<string, boolean>>((acc, event) => {
-        const { index } = event.args;
-        acc[index.toString()] = true;
+        const [index] = event.args;
+        acc[BigNumber.from(index).toString()] = true;
         return acc;
       }, {});
 
@@ -81,7 +79,7 @@ export class Operator {
     for (const [chainId, reservePortal] of Object.entries(this.portals)) {
       const now = Math.floor(Date.now() / 1000);
       const latestBlock = await reservePortal.provider.getBlockNumber();
-      const fromBlock = latestBlock - LAST_N_BLOCKS;
+      const fromBlock = Math.max(latestBlock - LAST_N_BLOCKS, 0);
       const toBlock = latestBlock;
       const [
         allCommitments,
@@ -102,14 +100,14 @@ export class Operator {
           fromBlock,
           toBlock,
           chainId
-        ),
+        ).then(eventsToSet),
         getPastEvents<VoidedEvent>(
           reservePortal,
           reservePortal.filters.Voided(null),
           fromBlock,
           toBlock,
           chainId
-        ),
+        ).then(eventsToSet),
         reservePortal.voidDelay(),
       ]);
       const pendingCommitments = await Promise.all(
@@ -117,8 +115,8 @@ export class Operator {
           .filter((event) => {
             const [index, timestamp] = event.args.map((v) => BigNumber.from(v));
             return (
-              !commitedCommitments[index.toNumber()] &&
-              !voidedCommitments[index.toNumber()] &&
+              !commitedCommitments[index.toString()] &&
+              !voidedCommitments[index.toString()] &&
               timestamp.add(voidDelay).gt(now)
             );
           })
