@@ -10,7 +10,7 @@ import {
 const signers = SIGNERS;
 const portals = PORTALS;
 const forwarders = FORWARDERS;
-const POLL_DELAY = 10000;
+const POLL_DELAY = Number(process.env.POLL_DELAY) || 10_000;
 
 // const config = buildConfig([44787]);
 const config = buildConfig([42220]);

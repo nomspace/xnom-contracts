@@ -1,4 +1,4 @@
-import { BaseContract, BigNumber, Contract, Signer } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import { Config, defaultConfig } from "./config";
 import {
   ReservePortal,
