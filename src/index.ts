@@ -53,6 +53,7 @@ export class Operator {
   portals: Portals;
   forwarders: Forwarders;
   config: Config;
+  alwaysFail: Record<string, Record<string, boolean>>;
 
   constructor(
     signers: Signers,
@@ -64,6 +65,7 @@ export class Operator {
     this.portals = portals;
     this.forwarders = forwarders;
     this.config = config;
+    this.alwaysFail = {};
   }
 
   // Returns all pending commitments
@@ -151,41 +153,78 @@ export class Operator {
         );
         continue;
       }
+      if (
+        this.alwaysFail[commitment.originChainId]?.[commitment.index.toString()]
+      ) {
+        console.warn(
+          `Commitment ${commitment.index} from chainId ${commitment.originChainId} will always fail`
+        );
+        continue;
+      }
       const reservePortal = this.portals[commitment.originChainId];
       const forwarder = this.forwarders[commitment.chainId.toString()];
       const originConfig = this.config[commitment.originChainId];
       const destConfig = this.config[commitment.chainId.toString()];
       try {
-        const gasLimit = await forwarder.estimateGas.execute(
-          commitment.request,
-          commitment.signature
-        );
-        const [success] = await forwarder.callStatic.execute(
-          commitment.request,
-          commitment.signature
-        );
-        if (!success) {
-          console.warn(
-            `Commitment ${commitment.index} from chainId ${commitment.originChainId} will likely fail. Skipping`
+        {
+          const gasPrice = await forwarder.provider.getGasPrice();
+          const gasLimit = await forwarder.estimateGas
+            .execute(commitment.request, commitment.signature, { gasPrice })
+            .catch(() => {
+              console.error(
+                `${commitment.originChainId}-${commitment.index} Failed to estimate gas for forwarding`
+              );
+              if (!this.alwaysFail[commitment.originChainId])
+                this.alwaysFail[commitment.originChainId] = {};
+              this.alwaysFail[commitment.originChainId][
+                commitment.index.toString()
+              ] = true;
+              return null;
+            });
+          if (!gasLimit) continue;
+          const [success] = await forwarder.callStatic.execute(
+            commitment.request,
+            commitment.signature
           );
-          continue;
+          if (!success) {
+            console.warn(
+              `Commitment ${commitment.index} from chainId ${commitment.originChainId} will likely fail. Skipping`
+            );
+            continue;
+          }
+          const tx = await forwarder.execute(
+            commitment.request,
+            commitment.signature,
+            { gasLimit, gasPrice }
+          );
+          await tx.wait(destConfig?.numConfirmations);
+          console.info(
+            `Fulfilled ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${tx.hash}`
+          );
         }
-        const tx = await forwarder.execute(
-          commitment.request,
-          commitment.signature,
-          { gasLimit }
-        );
-        await tx.wait(destConfig?.numConfirmations);
-        console.info(
-          `Fulfilled ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${tx.hash}`
-        );
-        const commitTx = await reservePortal.commit(commitment.index);
-        await commitTx.wait(originConfig?.numConfirmations);
-        console.info(
-          `Commited ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${commitTx.hash}`
-        );
+        {
+          const { gasPrice, maxFeePerGas, maxPriorityFeePerGas } =
+            await reservePortal.provider.getFeeData();
+          const params =
+            maxFeePerGas && maxPriorityFeePerGas
+              ? {
+                  maxFeePerGas: maxFeePerGas || undefined,
+                  maxPriorityFeePerGas: maxPriorityFeePerGas || undefined,
+                }
+              : { gasPrice: gasPrice || undefined };
+          const commitTx = await reservePortal.commit(commitment.index, {
+            ...params,
+          });
+          console.info(
+            `Committing ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${commitTx.hash}`
+          );
+          await timeout(commitTx.wait(originConfig?.numConfirmations));
+          console.info(
+            `Committed ${commitment.index} from chainId ${commitment.originChainId}. Tx hash: ${commitTx.hash}`
+          );
+        }
       } catch (e: any) {
-        console.error(e.message);
+        console.error(e);
       }
     }
   }
@@ -198,3 +237,13 @@ export class Operator {
     return await destConfig.whitelist(commitment);
   }
 }
+
+const TIMEOUT_MSEC = 30_000;
+const timeout = (promise: Promise<any>) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), TIMEOUT_MSEC)
+    ),
+  ]);
+};
