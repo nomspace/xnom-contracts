@@ -22,7 +22,7 @@ const getPastEvents = async (
   filter
 ) => {
   const filename = `/private/tmp/${contract.options.address}_${eventName}.txt`;
-  const bucketSize = 100;
+  const bucketSize = 10_000;
   let events = [];
   try {
     events = JSON.parse(fs.readFileSync(filename).toString());
@@ -195,6 +195,7 @@ const getNomsToMigrate = async () => {
 
   const toMigrate = [];
   const seen = {};
+  const failed = [];
   for (let i = 0; i < reserveEvents.length; i++) {
     let name = ethers.utils.toUtf8String(reserveEvents[i].returnValues.name);
     while (name.charAt(name.length - 1) === "\u0000") {
@@ -202,20 +203,34 @@ const getNomsToMigrate = async () => {
     }
     try {
       name = normalize(name);
+      const item = {
+        index: i,
+        name,
+        owner: owners[i],
+        resolution: resolutions[i],
+        expiration: expirations[i],
+      };
+      if (!seen[name] && name.includes(".")) {
+        failed.push(item);
+        seen[name] = true;
+      }
       if (!seen[name] && !migrated[name] && expirations[i] > now) {
-        toMigrate.push({
-          index: i,
-          name,
-          owner: owners[i],
-          resolution: resolutions[i],
-          expiration: expirations[i],
-        });
+        toMigrate.push(item);
       }
       seen[name] = true;
     } catch (e) {
-      console.warn(`Can't normalize ${name}`);
+      console.warn(`Can't normalize ${name}`, e);
     }
   }
+
+  fs.writeFileSync(
+    "failures.csv",
+    "name,owner,resolution,expiration\n" +
+      failed
+        .map((f) => [f.name, f.owner, f.resolution, f.expiration].join(","))
+        .join("\n")
+  );
+  return;
 
   return toMigrate;
 };
