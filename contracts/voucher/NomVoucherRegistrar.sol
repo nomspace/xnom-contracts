@@ -25,7 +25,7 @@ contract NomVoucherRegistrar is Ownable {
     nomVoucher = _nomVoucher;
   }
 
-  function normalizedCost(
+  function rentPrice(
     string memory name,
     uint256 duration,
     address payer
@@ -35,9 +35,9 @@ contract NomVoucherRegistrar is Ownable {
       duration,
       payer
     );
-    uint256 rentPrice = nomRegistrarController.rentPrice(name, duration, payer);
+    uint256 price = nomRegistrarController.rentPrice(name, duration, payer);
     return
-      (duration).mul(1 ether).mul(rentPrice).div(standardCost).div(
+      (duration).mul(1 ether).mul(price).div(standardCost).div(
         YEAR_IN_SECONDS
       );
   }
@@ -49,7 +49,7 @@ contract NomVoucherRegistrar is Ownable {
     address resolver,
     address addr
   ) external {
-    uint256 cost = this.normalizedCost(name, duration, msg.sender);
+    uint256 cost = this.rentPrice(name, duration, msg.sender);
     nomVoucher.safeTransferFrom(msg.sender, address(this), cost);
     nomRegistrarController.registerWithConfig(
       name,
@@ -61,7 +61,7 @@ contract NomVoucherRegistrar is Ownable {
   }
 
   function renew(string calldata name, uint256 duration) external {
-    uint256 cost = this.normalizedCost(name, duration, msg.sender);
+    uint256 cost = this.rentPrice(name, duration, msg.sender);
     nomVoucher.safeTransferFrom(msg.sender, address(this), cost);
     nomRegistrarController.renew(name, duration);
   }
