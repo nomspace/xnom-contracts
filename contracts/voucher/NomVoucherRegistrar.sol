@@ -35,11 +35,12 @@ contract NomVoucherRegistrar is Ownable {
       duration,
       payer
     );
+    if (standardCost == 0) {
+      return 0;
+    }
     uint256 price = nomRegistrarController.rentPrice(name, duration, payer);
     return
-      (duration).mul(1 ether).mul(price).div(standardCost).div(
-        YEAR_IN_SECONDS
-      );
+      (duration).mul(1 ether).mul(price).div(standardCost).div(YEAR_IN_SECONDS);
   }
 
   function registerWithConfig(

@@ -3,7 +3,8 @@ const NomVoucherRegistrar = artifacts.require("NomVoucherRegistrar");
 const NomRegistrarController = artifacts.require("NomRegistrarController");
 
 module.exports = async (deployer, network) => {
-  await deployer.deploy(NomVoucher);
+  // Uncomment if deploying the NomVoucher contract
+  // await deployer.deploy(NomVoucher);
   const nomVoucher = await NomVoucher.deployed();
 
   if (network === "celo") {

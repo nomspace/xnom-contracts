@@ -207,11 +207,15 @@ describe("Nom v2 Integration test", function () {
             decimals: 18,
           },
         },
+        {}, // no vNOM
         {
           [chainId]: baseRegistrarImplementation.address,
         },
         {
           [chainId]: nomRegistrarController.address,
+        },
+        {
+          [chainId]: nomRegistrarController.address, // dummy vNOMRegistrar
         },
         {
           [chainId]: reverseRegistrar.address,

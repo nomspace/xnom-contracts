@@ -11,6 +11,8 @@ import { ReservePortal } from "../../typechain/ReservePortal";
 import { ReservePortal__factory } from "../../typechain/factories/ReservePortal__factory";
 import { OwnableMinimalForwarder } from "../../typechain/OwnableMinimalForwarder";
 import { OwnableMinimalForwarder__factory } from "../../typechain/factories/OwnableMinimalForwarder__factory";
+import { NomVoucherRegistrar } from "../../typechain/NomVoucherRegistrar";
+import { NomVoucherRegistrar__factory } from "../../typechain/factories/NomVoucherRegistrar__factory";
 import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
 import { formatUnits, parseUnits } from "ethers/lib/utils";
 
@@ -122,15 +124,16 @@ const NOM_REGISTRAR_CONTROLLERS: Record<string, string> = {
   [44787]: "0x26AeE0de70C180f33190CD4f34C02C47C56b2665",
 };
 
+const VNOM_REGISTRARS: Record<string, string> = {
+  [42220]: "0x33D2bb7aC3D9c726b940AEB0d31c44864716514B",
+};
+
 const REVERSE_REGISTRARS: Record<string, string> = {
   [42220]: "0xe9c3CA404C3b282Fc911EcCa7046D9B699732D8b",
   [44787]: "0x10a575534D5976e361d2A90083c6A91512a6Bf94",
 };
 
-const ACCEPTED_CURRENCIES: Record<
-  string,
-  { address: string; decimals: number }
-> = {
+const ACCEPTED_USD: Record<string, { address: string; decimals: number }> = {
   [42220]: {
     address: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
     decimals: 18,
@@ -162,13 +165,23 @@ const ACCEPTED_CURRENCIES: Record<
   },
 };
 
+const ACCEPTED_VOUCHERS: Record<string, { address: string; decimals: number }> =
+  {
+    [43114]: {
+      address: "0xE0d373A8c31D05f240E9864138b35e580FC53cD8",
+      decimals: 18,
+    },
+  };
+
 export const buildConfig = (
   chainIds: number[],
   signers = SIGNERS,
   numConfirmations = NUM_CONFIRMATIONS,
-  acceptedCurrencies = ACCEPTED_CURRENCIES,
+  acceptedUsd = ACCEPTED_USD,
+  acceptedVouchers = ACCEPTED_VOUCHERS,
   baseRegistrarImplementations = BASE_REGISTRAR_IMPLEMENTATIONS,
   nomRegistrarControllers = NOM_REGISTRAR_CONTROLLERS,
+  vnomRegistrars = VNOM_REGISTRARS,
   reverseRegistrars = REVERSE_REGISTRARS,
   resolvers = RESOLVERS
 ) => {
@@ -189,6 +202,10 @@ export const buildConfig = (
     );
     const resolver = PublicResolver__factory.connect(
       resolvers[chainId],
+      signers[chainId]
+    );
+    const vnomRegistrar = NomVoucherRegistrar__factory.connect(
+      vnomRegistrars[chainId],
       signers[chainId]
     );
 
@@ -234,7 +251,7 @@ export const buildConfig = (
                     commitment.request.data
                   );
                 const acceptedCurrency =
-                  acceptedCurrencies[commitment.originChainId.toString()];
+                  acceptedUsd[commitment.originChainId.toString()];
                 if (acceptedCurrency.address !== commitment.currency) {
                   console.warn(
                     `Commitment ${commitment.index} uses an incorrect currency to register`
@@ -260,8 +277,7 @@ export const buildConfig = (
                     "renew",
                     commitment.request.data
                   );
-                const acceptedCurrency =
-                  acceptedCurrencies[commitment.originChainId];
+                const acceptedCurrency = acceptedUsd[commitment.originChainId];
                 if (acceptedCurrency.address !== commitment.currency) {
                   console.warn(
                     `Commitment ${commitment.index} uses an incorrect currency to register`
@@ -270,6 +286,36 @@ export const buildConfig = (
                 }
                 const cost = shiftDecimals(
                   await nomRegistrarController.rentPrice(
+                    name,
+                    duration,
+                    commitment.owner
+                  ),
+                  18,
+                  acceptedCurrency.decimals
+                );
+
+                // `cost` is denominated in 18 decimals
+                return commitment.amount.gte(cost);
+              }
+            }
+          case vnomRegistrar.address:
+            switch (commitment.request.data.slice(0, 10)) {
+              case vnomRegistrar.interface.getSighash("registerWithConfig"): {
+                const [name, , duration, resolver, addr] =
+                  vnomRegistrar.interface.decodeFunctionData(
+                    "registerWithConfig",
+                    commitment.request.data
+                  );
+                const acceptedCurrency =
+                  acceptedVouchers[commitment.originChainId.toString()];
+                if (acceptedCurrency.address !== commitment.currency) {
+                  console.warn(
+                    `Commitment ${commitment.index} uses an incorrect currency to register`
+                  );
+                  return false;
+                }
+                const cost = shiftDecimals(
+                  await vnomRegistrar.rentPrice(
                     name,
                     duration,
                     commitment.owner
