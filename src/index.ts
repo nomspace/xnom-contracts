@@ -16,7 +16,7 @@ type Portals = Record<string, ReservePortal>;
 type Forwarders = Record<string, OwnableMinimalForwarder>;
 
 const LAST_N_BLOCKS = 50_000; // Only fetch the last N blocks
-const BUCKET_SIZE = 3500;
+const BUCKET_SIZE = 2048;
 
 const getPastEvents = async <TEvent extends TypedEvent>(
   contract: any,
