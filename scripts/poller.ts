@@ -29,7 +29,7 @@ const main = async () => {
         await operator.finalizePendingCommitments(pendingCommitments);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to poll", e);
     }
     await new Promise((r) => setTimeout(r, POLL_DELAY));
   }

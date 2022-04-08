@@ -34,7 +34,8 @@
     "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude=reentrancy-eth,reentrancy-no-eth,name-reused,uninitialized-state-variables .",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "start": "nodemon scripts/poller.ts"
   },
   "devDependencies": {
     "@types/chai": "^4.3.0",

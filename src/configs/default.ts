@@ -11,7 +11,6 @@ import { ReservePortal } from "../../typechain/ReservePortal";
 import { ReservePortal__factory } from "../../typechain/factories/ReservePortal__factory";
 import { OwnableMinimalForwarder } from "../../typechain/OwnableMinimalForwarder";
 import { OwnableMinimalForwarder__factory } from "../../typechain/factories/OwnableMinimalForwarder__factory";
-import { NomVoucherRegistrar } from "../../typechain/NomVoucherRegistrar";
 import { NomVoucherRegistrar__factory } from "../../typechain/factories/NomVoucherRegistrar__factory";
 import { BaseRegistrarImplementation__factory } from "../../typechain/factories/BaseRegistrarImplementation__factory";
 import { formatUnits, parseUnits } from "ethers/lib/utils";
@@ -31,7 +30,7 @@ const MAINNET: Record<string, boolean> = {
 };
 
 export const PROVIDERS = {
-  [42220]: new CeloProvider("https://forno.celo.org"),
+  [42220]: new CeloProvider(process.env.CELO_RPC || "https://forno.celo.org"),
   [43114]: new JsonRpcProvider("https://api.avax.network/ext/bc/C/rpc"),
   [250]: new JsonRpcProvider("https://rpc.ftm.tools"),
   [137]: new JsonRpcProvider(process.env.POLYGON_RPC),

@@ -79,61 +79,67 @@ export class Operator {
 
     const allPendingCommitments: Commitment[] = [];
     for (const [chainId, reservePortal] of Object.entries(this.portals)) {
-      const now = Math.floor(Date.now() / 1000);
-      const latestBlock = await reservePortal.provider.getBlockNumber();
-      const fromBlock = Math.max(latestBlock - LAST_N_BLOCKS, 0);
-      const toBlock = latestBlock;
-      const [
-        allCommitments,
-        commitedCommitments,
-        voidedCommitments,
-        voidDelay,
-      ] = await Promise.all([
-        getPastEvents<EscrowedEvent>(
-          reservePortal,
-          reservePortal.filters.Escrowed(null, null),
-          fromBlock,
-          toBlock,
-          chainId
-        ),
-        getPastEvents<CommittedEvent>(
-          reservePortal,
-          reservePortal.filters.Committed(null),
-          fromBlock,
-          toBlock,
-          chainId
-        ).then(eventsToSet),
-        getPastEvents<VoidedEvent>(
-          reservePortal,
-          reservePortal.filters.Voided(null),
-          fromBlock,
-          toBlock,
-          chainId
-        ).then(eventsToSet),
-        reservePortal.voidDelay(),
-      ]);
-      const pendingCommitments = await Promise.all(
-        allCommitments
-          .filter((event) => {
-            const [index, timestamp] = event.args.map((v) => BigNumber.from(v));
-            return (
-              !commitedCommitments[index.toString()] &&
-              !voidedCommitments[index.toString()] &&
-              timestamp.add(voidDelay).gt(now)
-            );
-          })
-          .map((event) => {
-            // TODO: Multicall
-            const [index] = event.args;
-            return reservePortal
-              .commitments(index)
-              .then((pendingCommitment) => ({
-                ...pendingCommitment,
-                originChainId: chainId,
-              }));
-          })
-      );
-      allPendingCommitments.push(...pendingCommitments);
+      try {
+        const now = Math.floor(Date.now() / 1000);
+        const latestBlock = await reservePortal.provider.getBlockNumber();
+        const fromBlock = Math.max(latestBlock - LAST_N_BLOCKS, 0);
+        const toBlock = latestBlock;
+        const [
+          allCommitments,
+          commitedCommitments,
+          voidedCommitments,
+          voidDelay,
+        ] = await Promise.all([
+          getPastEvents<EscrowedEvent>(
+            reservePortal,
+            reservePortal.filters.Escrowed(null, null),
+            fromBlock,
+            toBlock,
+            chainId
+          ),
+          getPastEvents<CommittedEvent>(
+            reservePortal,
+            reservePortal.filters.Committed(null),
+            fromBlock,
+            toBlock,
+            chainId
+          ).then(eventsToSet),
+          getPastEvents<VoidedEvent>(
+            reservePortal,
+            reservePortal.filters.Voided(null),
+            fromBlock,
+            toBlock,
+            chainId
+          ).then(eventsToSet),
+          reservePortal.voidDelay(),
+        ]);
+        const pendingCommitments = await Promise.all(
+          allCommitments
+            .filter((event) => {
+              const [index, timestamp] = event.args.map((v) =>
+                BigNumber.from(v)
+              );
+              return (
+                !commitedCommitments[index.toString()] &&
+                !voidedCommitments[index.toString()] &&
+                timestamp.add(voidDelay).gt(now)
+              );
+            })
+            .map((event) => {
+              // TODO: Multicall
+              const [index] = event.args;
+              return reservePortal
+                .commitments(index)
+                .then((pendingCommitment) => ({
+                  ...pendingCommitment,
+                  originChainId: chainId,
+                }));
+            })
+        );
+        allPendingCommitments.push(...pendingCommitments);
+      } catch (e) {
+        console.warn(`Failed to fetch for network ${chainId}`);
+      }
     }
 
     return allPendingCommitments.sort((a, b) =>
@@ -224,7 +230,7 @@ export class Operator {
           );
         }
       } catch (e: any) {
-        console.error(e);
+        console.error(`Failed to process commitment ${commitment.index}`, e);
       }
     }
   }
