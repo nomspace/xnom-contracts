@@ -173,7 +173,10 @@ export class Operator {
       const destConfig = this.config[commitment.chainId.toString()];
       try {
         {
-          const gasPrice = await forwarder.provider.getGasPrice();
+          // Use 33% more gas than typical.
+          const gasPrice = (await forwarder.provider.getGasPrice())
+            .mul(133)
+            .div(100);
           const gasLimit = await forwarder.estimateGas
             .execute(commitment.request, commitment.signature, { gasPrice })
             .catch(() => {
